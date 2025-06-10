@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FedEx Tracking - Joan Luiser</title>
+    <!-- FedEx-inspired styles -->
+    <style>
+        :root {
+            --fedex-orange: #FF6200;
+            --fedex-purple: #4B0082;
+            --fedex-gray: #F5F5F5;
+            --fedex-dark: #333;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        body {
+            background: var(--fedex-gray);
+            color: var(--fedex-dark);
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            background: #fff;
+            padding: 15px 0;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        .logo {
+            cursor: pointer;
+            font-size: 2em;
+            color: var(--fedex-orange);
+            font-weight: bold;
+            display: inline-block;
+        }
+        .logo span {
+            color: var(--fedex-purple);
+        }
+        nav {
+            float: right;
+            padding-top: 10px;
+        }
+        nav a {
+            color: var(--fedex-dark);
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: 500;
+        }
+        nav a:hover {
+            color: var(--fedex-orange);
+        }
+        .tracking-section {
+            text-align: center;
+            padding: 50px 0;
+            background: #fff;
+            border-radius: 10px;
+            margin: 20px 0;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        .tracking-input {
+            padding: 10px;
+            width: 300px;
+            border: 2px solid var(--fedex-purple);
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .track-btn {
+            padding: 10px 20px;
+            background: var(--fedex-orange);
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+            transition: transform 0.3s ease;
+        }
+        .track-btn:hover {
+            transform: scale(1.05) rotateY(10deg);
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            transform: perspective(600px) rotateX(10deg);
+            transition: transform 0.5s ease;
+        }
+        .modal-content.show {
+            transform: perspective(600px) rotateX(0deg);
+        }
+        .admin-modal .modal-content {
+            max-width: 400px;
+        }
+        .admin-section {
+            display: none;
+            padding: 20px;
+            background: #fff;
+            border-radius: 10px;
+            margin: 20px 0;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        .admin-section table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .admin-section th, .admin-section td {
+            padding: 10px;
+            border: 1px solid var(--fedex-gray);
+            text-align: left;
+        }
+        .admin-section th {
+            background: var(--fedex-purple);
+            color: #fff;
+        }
+        .map {
+            height: 200px;
+            width: 100%;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .form-group {
+            margin: 10px 0;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--fedex-purple);
+            border-radius: 5px;
+        }
+        button {
+            padding: 8px 16px;
+            background: var(--fedex-orange);
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: var(--fedex-purple);
+        }
+        @media (max-width: 768px) {
+            .tracking-input {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            .track-btn {
+                width: 100%;
+            }
+            nav {
+                float: none;
+                text-align: center;
+            }
+            nav a {
+                display: block;
+                margin: 10px 0;
+            }
+        }
+    </style>
+    <!-- Leaflet for maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo" id="logo">Fed<span>Ex</span></div>
+            <nav>
+                <a href="#home">Home</a>
+                <a href="#track">Track</a>
+                <a href="#ship">Ship</a>
+                <a href="#support">Support</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="tracking-section">
+            <h2>Track Your Shipment</h2>
+            <input type="text" id="trackingNumber" class="tracking-input" placeholder="Enter Tracking Number">
+            <button class="track-btn" onclick="trackShipment()">Track</button>
+        </div>
+
+        <!-- Tracking Modal -->
+        <div class="modal" id="trackingModal">
+            <div class="modal-content" id="trackingContent">
+                <h3>Shipment Details</h3>
+                <div id="trackingDetails"></div>
+                <div id="map" class="map"></div>
+                <button onclick="closeModal('trackingModal')">Close</button>
+            </div>
+        </div>
+
+        <!-- Admin Login Modal -->
+        <div class="modal" id="adminLoginModal">
+            <div class="modal-content">
+                <h3>Admin Login</h3>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="adminUsername" placeholder="Enter username">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="adminPassword" placeholder="Enter password">
+                </div>
+                <button onclick="loginAdmin()">Login</button>
+                <button onclick="closeModal('adminLoginModal')">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Admin Portal -->
+        <div class="admin-section" id="adminSection">
+            <h2>Admin Portal</h2>
+            <h3>Create New Shipment</h3>
+            <div class="form-group">
+                <label>Sender Name</label>
+                <input type="text" id="senderName" placeholder="e.g., International Consular Services">
+            </div>
+            <div class="form-group">
+                <label>Sender Address</label>
+                <input type="text" id="senderAddress" placeholder="e.g., 123 Rue de Paris, 75001 Paris, France">
+            </div>
+            <div class="form-group">
+                <label>Receiver Name</label>
+                <input type="text" id="receiverName" placeholder="e.g., Joan Luiser">
+            </div>
+            <div class="form-group">
+                <label>Receiver Address</label>
+                <input type="text" id="receiverAddress" placeholder="e.g., 36751 Daisy Ln, Fruitland Park, Miami City, FL 34731">
+            </div>
+            <div class="form-group">
+                <label>Shipment Date</label>
+                <input type="date" id="shipDate">
+            </div>
+            <div class="form-group">
+                <label>Expected Delivery</label>
+                <input type="date" id="deliveryDate">
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <select id="status">
+                    <option value="In Transit">In Transit</option>
+                    <option value="Picked Up">Picked Up</option>
+                    <option value="Out for Delivery">Out for Delivery</option>
+                    <option value="Delivered">Delivered</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <input type="text" id="description" placeholder="e.g., Passport and Travel Documents">
+            </div>
+            <button onclick="createShipment()">Create Shipment</button>
+
+            <h3>Shipments</h3>
+            <table id="shipmentTable">
+                <thead>
+                    <tr>
+                        <th>Tracking #</th>
+                        <th>Sender</th>
+                        <th>Receiver</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="shipmentList"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        const { jsPDF } = window.jspdf;
+        let shipments = [
+            {
+                trackingNumber: "FD26031998JL",
+                senderName: "International Consular Services",
+                senderAddress: "123 Rue de Paris, 75001 Paris, France",
+                receiverName: "Joan Luiser",
+                receiverAddress: "36751 Daisy Ln, Fruitland Park, Miami City, FL 34731",
+                shipDate: "2025-06-10",
+                deliveryDate: "2025-06-13",
+                status: "In Transit",
+                description: "Passport and Travel Documents",
+                progress: [
+                    { date: "2025-06-10", location: "Paris, France", status: "Picked Up" },
+                    { date: "2025-06-11", location: "London, UK", status: "In Transit" },
+                    { date: "2025-06-12", location: "New York, USA", status: "In Transit" }
+                ]
+            }
+        ];
+
+        // Triple-click logo for admin login
+        let clickCount = 0;
+        document.getElementById('logo').addEventListener('click', () => {
+            clickCount++;
+            if (clickCount === 3) {
+                document.getElementById('adminLoginModal').style.display = 'flex';
+                clickCount = 0;
+            }
+        });
+
+        // Close modal
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Admin login
+        function loginAdmin() {
+            const username = document.getElementById('adminUsername').value;
+            const password = document.getElementById('adminPassword').value;
+            if (username === 'fedadmin' && password === '@Fedadmin1') {
+                closeModal('adminLoginModal');
+                document.getElementById('adminSection').style.display = 'block';
+                loadShipments();
+            } else {
+                alert('Invalid credentials!');
+            }
+        }
+
+        // Track shipment
+        function trackShipment() {
+            const trackingNumber = document.getElementById('trackingNumber').value;
+            const shipment = shipments.find(s => s.trackingNumber === trackingNumber);
+            const modal = document.getElementById('trackingModal');
+            const content = document.getElementById('trackingContent');
+            const details = document.getElementById('trackingDetails');
+
+            if (shipment) {
+                details.innerHTML = `
+                    <p><strong>Tracking #:</strong> ${shipment.trackingNumber}</p>
+                    <p><strong>Sender:</strong> ${shipment.senderName}, ${shipment.senderAddress}</p>
+                    <p><strong>Receiver:</strong> ${shipment.receiverName}, ${shipment.receiverAddress}</p>
+                    <p><strong>Shipment Date:</strong> ${shipment.shipDate}</p>
+                    <p><strong>Expected Delivery:</strong> ${shipment.deliveryDate}</p>
+                    <p><strong>Status:</strong> ${shipment.status}</p>
+                    <p><strong>Description:</strong> ${shipment.description}</p>
+                    <h4>Progress</h4>
+                    <ul>${shipment.progress.map(p => `<li>${p.date}: ${p.status} - ${p.location}</li>`).join('')}</ul>
+                `;
+                modal.style.display = 'flex';
+                setTimeout(() => content.classList.add('show'), 50);
+                initMap(shipment);
+            } else {
+                alert('Invalid tracking number!');
+            }
+        }
+
+        // Initialize map
+        function initMap(shipment) {
+            const map = L.map('map').setView([48.8566, 2.3522], 5); // Paris start
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+            shipment.progress.forEach(p => {
+                const coords = p.location === 'Paris, France' ? [48.8566, 2.3522] :
+                              p.location === 'London, UK' ? [51.5074, -0.1278] :
+                              p.location === 'New York, USA' ? [40.7128, -74.0060] :
+                              [25.7617, -80.1918]; // Miami
+                L.marker(coords).addTo(map).bindPopup(`${p.date}: ${p.status}`);
+            });
+        }
+
+        // Load shipments in admin table
+        function loadShipments() {
+            const tbody = document.getElementById('shipmentList');
+            tbody.innerHTML = '';
+            shipments.forEach(s => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${s.trackingNumber}</td>
+                    <td>${s.senderName}</td>
+                    <td>${s.receiverName}</td>
+                    <td>${s.status}</td>
+                    <td>
+                        <button onclick="editShipment('${s.trackingNumber}')">Edit</button>
+                        <button onclick="generateReceipt('${s.trackingNumber}')">Download Receipt</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Generate random tracking number
+        function generateTrackingNumber() {
+            return 'FD' + Math.floor(Math.random() * 1000000000) + 'JL';
+        }
+
+        // Create new shipment
+        function createShipment() {
+            const shipment = {
+                trackingNumber: generateTrackingNumber(),
+                senderName: document.getElementById('senderName').value,
+                senderAddress: document.getElementById('senderAddress').value,
+                receiverName: document.getElementById('receiverName').value,
+                receiverAddress: document.getElementById('receiverAddress').value,
+                shipDate: document.getElementById('shipDate').value,
+                deliveryDate: document.getElementById('deliveryDate').value,
+                status: document.getElementById('status').value,
+                description: document.getElementById('description').value,
+                progress: [
+                    { date: document.getElementById('shipDate').value, location: document.getElementById('senderAddress').value.split(',')[0], status: 'Picked Up' }
+                ]
+            };
+            shipments.push(shipment);
+            loadShipments();
+            generateReceipt(shipment.trackingNumber);
+            alert('Shipment created! Receipt generated.');
+        }
+
+        // Edit shipment
+        function editShipment(trackingNumber) {
+            const shipment = shipments.find(s => s.trackingNumber === trackingNumber);
+            if (shipment) {
+                document.getElementById('senderName').value = shipment.senderName;
+                document.getElementById('senderAddress').value = shipment.senderAddress;
+                document.getElementById('receiverName').value = shipment.receiverName;
+                document.getElementById('receiverAddress').value = shipment.receiverAddress;
+                document.getElementById('shipDate').value = shipment.shipDate;
+                document.getElementById('deliveryDate').value = shipment.deliveryDate;
+                document.getElementById('status').value = shipment.status;
+                document.getElementById('description').value = shipment.description;
+                shipments = shipments.filter(s => s.trackingNumber !== trackingNumber);
+                loadShipments();
+            }
+        }
+
+        // Generate and download receipt (PDF)
+        function generateReceipt(trackingNumber) {
+            const shipment = shipments.find(s => s.trackingNumber === trackingNumber);
+            if (!shipment) return;
+
+            const doc = new jsPDF();
+            doc.setFontSize(20);
+            doc.setTextColor(255, 98, 0); // FedEx orange
+            doc.text('FedEx Shipment Receipt', 20, 20);
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Tracking #: ${shipment.trackingNumber}`, 20, 40);
+            doc.text(`Sender: ${shipment.senderName}`, 20, 50);
+            doc.text(`From: ${shipment.senderAddress}`, 20, 60);
+            doc.text(`Receiver: ${shipment.receiverName}`, 20, 70);
+            doc.text(`To: ${shipment.receiverAddress}`, 20, 80);
+            doc.text(`Shipment Date: ${shipment.shipDate}`, 20, 90);
+            doc.text(`Expected Delivery: ${shipment.deliveryDate}`, 20, 100);
+            doc.text(`Status: ${shipment.status}`, 20, 110);
+            doc.text(`Description: ${shipment.description}`, 20, 120);
+            doc.setTextColor(75, 0, 130); // FedEx purple
+            doc.text('Thank you for choosing FedEx!', 20, 140);
+            doc.save(`FedEx_Receipt_${shipment.trackingNumber}.pdf`);
+        }
+    </script>
+</body>
+</html>
