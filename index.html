@@ -4,13 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FedEx Tracking - Joan Luiser</title>
-    <!-- FedEx-inspired styles -->
+    <!-- Leaflet for maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
             --fedex-orange: #FF6200;
             --fedex-purple: #4B0082;
             --fedex-gray: #F5F5F5;
             --fedex-dark: #333;
+            --glass-bg: rgba(255, 255, 255, 0.2);
+            --glass-border: rgba(255, 255, 255, 0.3);
         }
         * {
             margin: 0;
@@ -19,27 +24,36 @@
             font-family: 'Arial', sans-serif;
         }
         body {
-            background: var(--fedex-gray);
+            background: linear-gradient(135deg, var(--fedex-gray), #e0e0e0);
             color: var(--fedex-dark);
             line-height: 1.6;
+            overflow-x: hidden;
         }
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
         }
+        /* Header & Navigation */
         header {
-            background: #fff;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
             padding: 15px 0;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            position: relative;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            width: 100%;
+            z-index: 1000;
         }
         .logo {
             cursor: pointer;
-            font-size: 2em;
+            font-size: 2.2em;
             color: var(--fedex-orange);
             font-weight: bold;
             display: inline-block;
+            transition: transform 0.3s ease;
+        }
+        .logo:hover {
+            transform: rotateY(20deg);
         }
         .logo span {
             color: var(--fedex-purple);
@@ -51,41 +65,77 @@
         nav a {
             color: var(--fedex-dark);
             text-decoration: none;
-            margin: 0 15px;
+            margin: 0 20px;
             font-weight: 500;
+            position: relative;
+            transition: color 0.3s ease;
         }
         nav a:hover {
             color: var(--fedex-orange);
         }
+        nav a::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            background: var(--fedex-orange);
+            bottom: -5px;
+            left: 0;
+            transition: width 0.3s ease;
+        }
+        nav a:hover::after {
+            width: 100%;
+        }
+        /* Glassmorphic Sections */
+        .section {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 80px 0 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transform: perspective(600px) rotateX(2deg);
+            transition: transform 0.5s ease;
+        }
+        .section:hover {
+            transform: perspective(600px) rotateX(0deg);
+        }
+        h2 {
+            color: var(--fedex-purple);
+            font-size: 2em;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        /* Tracking Section */
         .tracking-section {
             text-align: center;
-            padding: 50px 0;
-            background: #fff;
-            border-radius: 10px;
-            margin: 20px 0;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         }
         .tracking-input {
-            padding: 10px;
+            padding: 12px;
             width: 300px;
             border: 2px solid var(--fedex-purple);
-            border-radius: 5px;
+            border-radius: 8px;
             font-size: 16px;
+            background: var(--glass-bg);
+            color: var(--fedex-dark);
         }
         .track-btn {
-            padding: 10px 20px;
+            padding: 12px 24px;
             background: var(--fedex-orange);
             color: #fff;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 16px;
             margin-left: 10px;
-            transition: transform 0.3s ease;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
         .track-btn:hover {
-            transform: scale(1.05) rotateY(10deg);
+            transform: scale(1.1) rotateY(15deg);
+            box-shadow: 0 5px 15px rgba(255, 98, 0, 0.4);
         }
+        /* Modal */
         .modal {
             display: none;
             position: fixed;
@@ -93,18 +143,19 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.6);
             justify-content: center;
             align-items: center;
             z-index: 1000;
         }
         .modal-content {
-            background: #fff;
-            padding: 20px;
-            border-radius: 10px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 15px;
             max-width: 600px;
             width: 90%;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             transform: perspective(600px) rotateX(10deg);
             transition: transform 0.5s ease;
         }
@@ -114,13 +165,15 @@
         .admin-modal .modal-content {
             max-width: 400px;
         }
+        .map, .three-canvas {
+            height: 200px;
+            width: 100%;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+        /* Admin Section */
         .admin-section {
             display: none;
-            padding: 20px;
-            background: #fff;
-            border-radius: 10px;
-            margin: 20px 0;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         }
         .admin-section table {
             width: 100%;
@@ -128,49 +181,76 @@
             margin: 20px 0;
         }
         .admin-section th, .admin-section td {
-            padding: 10px;
-            border: 1px solid var(--fedex-gray);
+            padding: 12px;
+            border: 1px solid var(--glass-border);
             text-align: left;
         }
         .admin-section th {
             background: var(--fedex-purple);
             color: #fff;
         }
-        .map {
-            height: 200px;
-            width: 100%;
-            border-radius: 5px;
-            margin: 10px 0;
-        }
         .form-group {
-            margin: 10px 0;
+            margin: 15px 0;
         }
         .form-group label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            color: var(--fedex-purple);
         }
         .form-group input, .form-group select {
             width: 100%;
-            padding: 8px;
+            padding: 10px;
             border: 1px solid var(--fedex-purple);
-            border-radius: 5px;
+            border-radius: 8px;
+            background: var(--glass-bg);
         }
         button {
-            padding: 8px 16px;
+            padding: 10px 20px;
             background: var(--fedex-orange);
             color: #fff;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             margin: 5px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
         button:hover {
-            background: var(--fedex-purple);
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(255, 98, 0, 0.4);
         }
+        /* 3D Icons & Animations */
+        .icon-3d {
+            font-size: 2em;
+            color: var(--fedex-orange);
+            transition: transform 0.5s ease;
+            display: inline-block;
+        }
+        .icon-3d:hover {
+            transform: rotateY(360deg);
+        }
+        /* Page Content */
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+        }
+        .feature {
+            margin: 20px 0;
+            padding: 15px;
+            background: var(--glass-bg);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .feature i {
+            margin-right: 15px;
+        }
+        /* Responsive Design */
         @media (max-width: 768px) {
             .tracking-input {
                 width: 100%;
-                margin-bottom: 10px;
+                margin-bottom: 15px;
             }
             .track-btn {
                 width: 100%;
@@ -181,31 +261,84 @@
             }
             nav a {
                 display: block;
-                margin: 10px 0;
+                margin: 15px 0;
+            }
+            .logo {
+                font-size: 1.8em;
             }
         }
     </style>
-    <!-- Leaflet for maps -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
     <header>
         <div class="container">
             <div class="logo" id="logo">Fed<span>Ex</span></div>
             <nav>
-                <a href="#home">Home</a>
-                <a href="#track">Track</a>
-                <a href="#ship">Ship</a>
-                <a href="#support">Support</a>
+                <a href="#home" onclick="showPage('home')">Home</a>
+                <a href="#track" onclick="showPage('track')">Track</a>
+                <a href="#ship" onclick="showPage('ship')">Ship</a>
+                <a href="#support" onclick="showPage('support')">Support</a>
             </nav>
         </div>
     </header>
 
     <div class="container">
-        <div class="tracking-section">
-            <h2>Track Your Shipment</h2>
-            <input type="text" id="trackingNumber" class="tracking-input" placeholder="Enter Tracking Number">
-            <button class="track-btn" onclick="trackShipment()">Track</button>
+        <!-- Home Page -->
+        <div class="page active" id="home">
+            <div class="section">
+                <h2>Welcome to FedEx</h2>
+                <div class="feature">
+                    <i class="fas fa-truck icon-3d"></i>
+                    <p>Reliable, fast, and secure shipping worldwide. Track your packages in real-time with FedEx.</p>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-box icon-3d"></i>
+                    <p>Customized shipping solutions for Joan Luiser and all customers. Ship with confidence!</p>
+                </div>
+                <div id="three-home" class="three-canvas"></div>
+            </div>
+        </div>
+
+        <!-- Track Page -->
+        <div class="page" id="track">
+            <div class="section tracking-section">
+                <h2>Track Your Shipment</h2>
+                <input type="text" id="trackingNumber" class="tracking-input" placeholder="Enter Tracking Number">
+                <button class="track-btn" onclick="trackShipment()">Track</button>
+                <div id="three-track" class="three-canvas"></div>
+            </div>
+        </div>
+
+        <!-- Ship Page -->
+        <div class="page" id="ship">
+            <div class="section">
+                <h2>Ship with FedEx</h2>
+                <div class="feature">
+                    <i class="fas fa-plane icon-3d"></i>
+                    <p>International Shipping: Send passports, documents, and more from Paris to Miami and beyond.</p>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-boxes icon-3d"></i>
+                    <p>Custom Rates: Get quotes for Joan Luiser’s travel documents or any package. Fast delivery guaranteed.</p>
+                </div>
+                <div id="three-ship" class="three-canvas"></div>
+            </div>
+        </div>
+
+        <!-- Support Page -->
+        <div class="page" id="support">
+            <div class="section">
+                <h2>Support Center</h2>
+                <div class="feature">
+                    <i class="fas fa-headset icon-3d"></i>
+                    <p>Contact Us: Call 1-800-FedEx-Go or email support@fedex.com for help.</p>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-question-circle icon-3d"></i>
+                    <p>FAQ: Find answers to tracking, shipping, and delivery questions for Joan Luiser and all customers.</p>
+                </div>
+                <div id="three-support" class="three-canvas"></div>
+            </div>
         </div>
 
         <!-- Tracking Modal -->
@@ -219,7 +352,7 @@
         </div>
 
         <!-- Admin Login Modal -->
-        <div class="modal" id="adminLoginModal">
+        <div class="modal admin-modal" id="adminLoginModal">
             <div class="modal-content">
                 <h3>Admin Login</h3>
                 <div class="form-group">
@@ -236,61 +369,63 @@
         </div>
 
         <!-- Admin Portal -->
-        <div class="admin-section" id="adminSection">
-            <h2>Admin Portal</h2>
-            <h3>Create New Shipment</h3>
-            <div class="form-group">
-                <label>Sender Name</label>
-                <input type="text" id="senderName" placeholder="e.g., International Consular Services">
+        <div class="page" id="adminSection">
+            <div class="section admin-section">
+                <h2>Admin Portal</h2>
+                <h3>Create New Shipment</h3>
+                <div class="form-group">
+                    <label>Sender Name</label>
+                    <input type="text" id="senderName" placeholder="e.g., International Consular Services">
+                </div>
+                <div class="form-group">
+                    <label>Sender Address</label>
+                    <input type="text" id="senderAddress" placeholder="e.g., 123 Rue de Paris, 75001 Paris, France">
+                </div>
+                <div class="form-group">
+                    <label>Receiver Name</label>
+                    <input type="text" id="receiverName" placeholder="e.g., Joan Luiser">
+                </div>
+                <div class="form-group">
+                    <label>Receiver Address</label>
+                    <input type="text" id="receiverAddress" placeholder="e.g., 36751 Daisy Ln, Fruitland Park, Miami City, FL 34731">
+                </div>
+                <div class="form-group">
+                    <label>Shipment Date</label>
+                    <input type="date" id="shipDate">
+                </div>
+                <div class="form-group">
+                    <label>Expected Delivery</label>
+                    <input type="date" id="deliveryDate">
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="status">
+                        <option value="In Transit">In Transit</option>
+                        <option value="Picked Up">Picked Up</option>
+                        <option value="Out for Delivery">Out for Delivery</option>
+                        <option value="Delivered">Delivered</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <input type="text" id="description" placeholder="e.g., Passport and Travel Documents">
+                </div>
+                <button onclick="createShipment()">Create Shipment</button>
+                <h3>Shipments</h3>
+                <table id="shipmentTable">
+                    <thead>
+                        <tr>
+                            <th>Tracking #</th>
+                            <th>Sender</th>
+                            <th>Receiver</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="shipmentList"></tbody>
+                </table>
+                <div id="three-admin" class="three-canvas"></div>
             </div>
-            <div class="form-group">
-                <label>Sender Address</label>
-                <input type="text" id="senderAddress" placeholder="e.g., 123 Rue de Paris, 75001 Paris, France">
-            </div>
-            <div class="form-group">
-                <label>Receiver Name</label>
-                <input type="text" id="receiverName" placeholder="e.g., Joan Luiser">
-            </div>
-            <div class="form-group">
-                <label>Receiver Address</label>
-                <input type="text" id="receiverAddress" placeholder="e.g., 36751 Daisy Ln, Fruitland Park, Miami City, FL 34731">
-            </div>
-            <div class="form-group">
-                <label>Shipment Date</label>
-                <input type="date" id="shipDate">
-            </div>
-            <div class="form-group">
-                <label>Expected Delivery</label>
-                <input type="date" id="deliveryDate">
-            </div>
-            <div class="form-group">
-                <label>Status</label>
-                <select id="status">
-                    <option value="In Transit">In Transit</option>
-                    <option value="Picked Up">Picked Up</option>
-                    <option value="Out for Delivery">Out for Delivery</option>
-                    <option value="Delivered">Delivered</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Description</label>
-                <input type="text" id="description" placeholder="e.g., Passport and Travel Documents">
-            </div>
-            <button onclick="createShipment()">Create Shipment</button>
-
-            <h3>Shipments</h3>
-            <table id="shipmentTable">
-                <thead>
-                    <tr>
-                        <th>Tracking #</th>
-                        <th>Sender</th>
-                        <th>Receiver</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="shipmentList"></tbody>
-            </table>
         </div>
     </div>
 
@@ -319,6 +454,54 @@
             }
         ];
 
+        // Page Navigation
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            if (pageId !== 'adminSection') {
+                document.getElementById('adminSection').style.display = 'none';
+            }
+        }
+
+        // 3D Animations with Three.js
+        function init3D(canvasId, type) {
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ alpha: true });
+            renderer.setSize(300, 200);
+            document.getElementById(canvasId).appendChild(renderer.domElement);
+
+            let geometry, material, mesh;
+            if (type === 'box') {
+                geometry = new THREE.BoxGeometry(1, 1, 1);
+                material = new THREE.MeshBasicMaterial({ color: 0xFF6200 });
+                mesh = new THREE.Mesh(geometry, material);
+            } else if (type === 'truck') {
+                geometry = new THREE.BoxGeometry(1.5, 0.8, 0.6);
+                material = new THREE.MeshBasicMaterial({ color: 0x4B0082 });
+                mesh = new THREE.Mesh(geometry, material);
+            } else if (type === 'plane') {
+                geometry = new THREE.ConeGeometry(0.5, 1.5, 32);
+                material = new THREE.MeshBasicMaterial({ color: 0xFF6200 });
+                mesh = new THREE.Mesh(geometry, material);
+            }
+            scene.add(mesh);
+            camera.position.z = 5;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                mesh.rotation.x += 0.01;
+                mesh.rotation.y += 0.02;
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+        init3D('three-home', 'box');
+        init3D('three-track', 'box');
+        init3D('three-ship', 'plane');
+        init3D('three-support', 'truck');
+        init3D('three-admin', 'truck');
+
         // Triple-click logo for admin login
         let clickCount = 0;
         document.getElementById('logo').addEventListener('click', () => {
@@ -340,6 +523,7 @@
             const password = document.getElementById('adminPassword').value;
             if (username === 'fedadmin' && password === '@Fedadmin1') {
                 closeModal('adminLoginModal');
+                showPage('adminSection');
                 document.getElementById('adminSection').style.display = 'block';
                 loadShipments();
             } else {
@@ -379,7 +563,7 @@
         function initMap(shipment) {
             const map = L.map('map').setView([48.8566, 2.3522], 5); // Paris start
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors'
+                attribution: '© OpenStreetMap contributors'
             }).addTo(map);
             shipment.progress.forEach(p => {
                 const coords = p.location === 'Paris, France' ? [48.8566, 2.3522] :
@@ -478,6 +662,9 @@
             doc.text('Thank you for choosing FedEx!', 20, 140);
             doc.save(`FedEx_Receipt_${shipment.trackingNumber}.pdf`);
         }
+
+        // Initialize default page
+        showPage('home');
     </script>
 </body>
 </html>
