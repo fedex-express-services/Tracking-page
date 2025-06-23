@@ -1386,196 +1386,336 @@
         trackingNumber: 'FD26031998KR',
         status: 'Awaiting Clearance',
         service: 'FedEx International Priority',
-        currentLocation: 'FedEx Office Paris, France',
-        estimatedDelivery: 'Pending clearance approval',
-        shipDate: 'June 22, 2025',
-        weight: '2,840 lbs',
-        dimensions: '72" x 84" x 48"',
-        declaredValue: '$424,000.00',
-        contents: '3 Tesla vehicles, Diamond jewelry',
-        reference: 'HIGH-VALUE-SHIPMENT',
-        insurance: 'Full Coverage ($424,000.00)',
-        progress: 20,
-        requiresClearance: true,
+        currentLocation: 'FedEx Office Paris',
+        shipDate: 'June 20, 2025',
+        estimatedDelivery: 'June 27, 2025',
+        progress: 25,
+        weight: '12.5 lbs',
+        dimensions: '30 x 20 x 15 cm',
+        declaredValue: '$1,000.00',
+        contents: 'Electronics (Tablet)',
+        reference: 'INV-2025-4567',
+        insurance: 'Standard Coverage',
         sender: {
-          name: 'Keanu Reeves',
-          company: 'FedEx Office Paris',
+          name: 'Pierre Dubois',
+          company: 'Tech Exports SARL',
           address: '15 Rue de la Paix',
-          city: '75001 Paris, France',
+          city: 'Paris, France 75001',
           phone: '+33 1 42 61 50 50'
         },
         recipient: {
-          name: 'Kavita Dinanauth',
-          address: '2103 Belladora Road',
-          city: 'Conway, SC 29527, USA',
-          email: 'kdinanauth@yahoo.com'
+          name: 'John Smith',
+          address: '123 Coastal Drive',
+          city: 'Conway, SC 29526, USA',
+          phone: '+1 (843) 555-1234'
         },
         timeline: [
           {
-            status: 'Awaiting recipient clearance',
-            location: 'PARIS, FR',
-            date: 'June 22, 2025',
-            time: '1:45 PM',
-            description: 'Package registered at FedEx Office Paris. Awaiting recipient clearance before shipping.',
-            isLatest: true,
-            type: 'clearance'
+            status: 'Registered',
+            location: 'FedEx Office Paris',
+            date: 'June 20, 2025',
+            time: '10:30 AM',
+            description: 'Package received and registered at FedEx Office Paris.',
+            isLatest: false
           },
           {
-            status: 'Registered at FedEx facility',
-            location: 'PARIS, FR',
+            status: 'Awaiting Clearance',
+            location: 'FedEx Office Paris',
             date: 'June 22, 2025',
-            time: '1:45 PM',
-            description: 'High-value package registered and secured at FedEx Office Paris'
+            time: '3:45 PM',
+            description: 'Package is awaiting clearance approval from recipient.',
+            isLatest: true
           }
         ]
       }
     };
 
-    // Dark mode detection
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      document.documentElement.classList.add('dark');
-    }
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
-      if (event.matches) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
+    // PDF Generation with "FEDEX DELIVERY" header
+    function generatePDF(trackingNumber) {
+      try {
+        // Check if jsPDF is available
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+          throw new Error('jsPDF library is not loaded. Please try again later.');
+        }
+
+        const data = trackingDatabase[trackingNumber];
+        if (!data) {
+          throw new Error('Invalid tracking number or no data available.');
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4',
+        });
+
+        // Constants for page layout
+        const pageHeight = doc.internal.pageSize.height;
+        const margin = 20;
+        let yPos = 30; // Starting Y position
+
+        // Helper function to check if we need a new page
+        function checkPageOverflow(additionalHeight) {
+          if (yPos + additionalHeight > pageHeight - margin) {
+            doc.addPage();
+            yPos = margin;
+          }
+        }
+
+        // FedEx Header
+        doc.setFillColor(77, 20, 140); // FedEx Purple
+        doc.rect(0, 0, 210, 25, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(24);
+        doc.text('FEDEX DELIVERY', 60, 17);
+
+        // Document Title
+        checkPageOverflow(20);
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.text('SHIPMENT RECEIPT', margin, yPos);
+        yPos += 10;
+
+        // Receipt Details
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Receipt #: FDX-${data.trackingNumber}`, margin, yPos);
+        doc.text(`Created on: ${new Date().toLocaleDateString()}`, 140, yPos);
+        yPos += 10;
+
+        // Official Stamp
+        checkPageOverflow(20);
+        doc.setDrawColor(200, 0, 0);
+        doc.setLineWidth(0.5);
+        doc.circle(180, yPos - 5, 15, 'S');
+        doc.setFontSize(8);
+        doc.setTextColor(200, 0, 0);
+        doc.text('OFFICIAL FEDEX STAMP', 170, yPos - 10);
+        doc.text('PARIS FACILITY', 172, yPos - 5);
+        doc.text('JUN 22 2025', 174, yPos);
+        doc.setTextColor(0, 0, 0);
+        yPos += 10;
+
+        // Tracking Information
+        checkPageOverflow(60);
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('TRACKING INFORMATION', margin, yPos);
+        yPos += 10;
+
+        const trackingInfo = [
+          ['Tracking Number:', data.trackingNumber],
+          ['Service Type:', data.service],
+          ['Current Status:', data.status],
+          ['Ship Date:', data.shipDate],
+          ['Expected Delivery:', data.estimatedDelivery],
+          ['Current Location:', data.currentLocation],
+        ];
+
+        doc.setFontSize(10);
+        trackingInfo.forEach(([label, value]) => {
+          checkPageOverflow(8);
+          doc.setFont('helvetica', 'bold');
+          doc.text(label, margin, yPos);
+          doc.setFont('helvetica', 'normal');
+          const textLines = doc.splitTextToSize(value, 110);
+          doc.text(textLines, 80, yPos);
+          yPos += textLines.length * 8;
+        });
+
+        // Package Details
+        checkPageOverflow(60);
+        yPos += 10;
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('PACKAGE DETAILS', margin, yPos);
+        yPos += 10;
+
+        const packageInfo = [
+          ['Weight:', data.weight],
+          ['Dimensions:', data.dimensions],
+          ['Declared Value:', data.declaredValue],
+          ['Contents:', data.contents],
+          ['Reference:', data.reference],
+          ['Insurance:', data.insurance],
+        ];
+
+        doc.setFontSize(10);
+        packageInfo.forEach(([label, value]) => {
+          checkPageOverflow(12);
+          doc.setFont('helvetica', 'bold');
+          doc.text(label, margin, yPos);
+          doc.setFont('helvetica', 'normal');
+          const textLines = doc.splitTextToSize(value, 110);
+          doc.text(textLines, 80, yPos);
+          yPos += textLines.length * 8;
+        });
+
+        // Addresses
+        checkPageOverflow(80);
+        yPos += 10;
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('SHIPPING ADDRESSES', margin, yPos);
+        yPos += 10;
+
+        // From Address
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('FROM:', margin, yPos);
+        yPos += 6;
+        doc.setFont('helvetica', 'normal');
+        const fromLines = [
+          data.sender.name,
+          data.sender.company,
+          data.sender.address,
+          data.sender.city,
+          data.sender.phone,
+        ].filter(Boolean);
+        fromLines.forEach((line) => {
+          checkPageOverflow(6);
+          doc.text(line, margin, yPos);
+          yPos += 6;
+        });
+        yPos += 10;
+
+        // To Address
+        checkPageOverflow(40);
+        doc.setFont('helvetica', 'bold');
+        doc.text('TO:', margin, yPos);
+        yPos += 6;
+        doc.setFont('helvetica', 'normal');
+        const toLines = [
+          data.recipient.name,
+          data.recipient.address,
+          data.recipient.city,
+          data.recipient.phone,
+        ].filter(Boolean);
+        toLines.forEach((line) => {
+          checkPageOverflow(6);
+          doc.text(line, margin, yPos);
+          yPos += 6;
+        });
+
+        // Barcode Simulation
+        checkPageOverflow(30);
+        doc.setLineWidth(1);
+        for (let i = 0; i < 50; i++) {
+          const x = 120 + i * 2;
+          const height = Math.random() * 10 + 5;
+          doc.line(x, yPos, x, yPos + height);
+        }
+        doc.setFontSize(8);
+        doc.text(data.trackingNumber, 140, yPos + 15);
+        yPos += 25;
+
+        // Footer
+        checkPageOverflow(20);
+        doc.setFontSize(8);
+        doc.setTextColor(77, 20, 140);
+        doc.text('© 2025 FedEx Corporation. All rights reserved.', margin, yPos);
+        yPos += 5;
+        doc.text('Official FedEx Delivery Receipt', margin, yPos);
+
+        // Official Seal
+        doc.setDrawColor(77, 20, 140);
+        doc.setLineWidth(0.3);
+        doc.circle(180, yPos - 5, 10, 'S');
+        doc.setFontSize(6);
+        doc.text('FEDEX SEAL', 175, yPos - 5);
+
+        // Save the PDF
+        doc.save(`FedEx-Receipt-${data.trackingNumber}.pdf`);
+        showNotification('Receipt downloaded successfully!', 'success');
+      } catch (error) {
+        console.error('PDF Generation Error:', error);
+        showNotification(`Failed to generate receipt: ${error.message}`, 'error');
       }
-    });
-
-    // Utility Functions
-    function showNotification(message, type = 'info') {
-      const notification = document.createElement('div');
-      notification.className = `notification ${type}`;
-      notification.setAttribute('role', 'alert');
-      notification.innerHTML = `
-        <div class="flex items-center">
-          <i class="fas fa-${getNotificationIcon(type)} mr-2"></i>
-          <span>${message}</span>
-        </div>
-      `;
-      
-      document.body.appendChild(notification);
-      
-      setTimeout(() => {
-        notification.style.animation = 'slideInRight 0.5s ease-out reverse';
-        setTimeout(() => notification.remove(), 500);
-      }, 4000);
-    }
-
-    function getNotificationIcon(type) {
-      const icons = {
-        success: 'check-circle',
-        error: 'exclamation-circle',
-        warning: 'exclamation-triangle',
-        info: 'info-circle'
-      };
-      return icons[type] || 'info-circle';
     }
 
     // Page Navigation
     function showPage(pageId) {
-      document.querySelectorAll('.page-section').forEach(page => {
-        page.classList.remove('active');
+      document.querySelectorAll('.page-section').forEach(section => {
+        section.classList.remove('active');
       });
-      
-      const targetPage = document.getElementById(pageId + '-page');
-      if (targetPage) {
-        targetPage.classList.add('active');
-        AppState.currentPage = pageId;
-      }
-      
+      document.getElementById(`${pageId}-page`).classList.add('active');
+      AppState.currentPage = pageId;
       hideMobileMenu();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // Modal Functions
+    // Modal Management
     function showModal(modalId) {
-      const modal = document.getElementById(modalId);
-      if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-        modal.querySelector('.modal-content').focus();
-      }
-      hideMobileMenu();
+      document.getElementById(modalId).classList.remove('hidden');
+      document.getElementById(modalId).querySelector('.modal-content').focus();
+      document.body.style.overflow = 'hidden';
     }
 
     function closeModal(modalId) {
-      const modal = document.getElementById(modalId);
-      if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-      }
+      document.getElementById(modalId).classList.add('hidden');
+      document.body.style.overflow = 'auto';
     }
 
-    // Mobile Menu Functions
+    // Mobile Menu Toggle
     function toggleMobileMenu() {
       const mobileMenu = document.getElementById('mobile-menu');
       mobileMenu.classList.toggle('hidden');
     }
 
     function hideMobileMenu() {
-      const mobileMenu = document.getElementById('mobile-menu');
-      mobileMenu.classList.add('hidden');
+      document.getElementById('mobile-menu').classList.add('hidden');
     }
 
-    // Tab Navigation
-    function showTab(tabId) {
-      const tabs = document.querySelectorAll('.tab-content');
-      const buttons = document.querySelectorAll('.tab-button');
-      
-      tabs.forEach(tab => tab.classList.remove('active'));
-      buttons.forEach(btn => btn.classList.remove('active'));
-      
-      const targetTab = document.getElementById(tabId);
-      const targetButton = document.querySelector(`[data-tab="${tabId}"]`);
-      
-      if (targetTab) targetTab.classList.add('active');
-      if (targetButton) targetButton.classList.add('active');
-    }
+    // Notification System
+    function showNotification(message, type = 'info') {
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      notification.textContent = message;
+      document.body.appendChild(notification);
 
-    // FAQ Toggle
-    function toggleFaq(element) {
-      const answer = element.querySelector('.faq-answer');
-      const icon = element.querySelector('.fa-chevron-down');
-      
-      answer.classList.toggle('active');
-      icon.classList.toggle('fa-chevron-down');
-      icon.classList.toggle('fa-chevron-up');
+      setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => {
+          notification.remove();
+        }, 300);
+      }, 3000);
+
+      AppState.notifications.push({ message, type, timestamp: new Date() });
     }
 
     // Form Validation
     function validateForm(form) {
-      const inputs = form.querySelectorAll('input[required], textarea[required], select[required]');
       let isValid = true;
-
+      const inputs = form.querySelectorAll('input[required], textarea[required], select[required]');
+      
       inputs.forEach(input => {
-        const errorMessage = input.nextElementSibling?.classList.contains('error-text') ? input.nextElementSibling : null;
+        const errorText = input.nextElementSibling?.classList.contains('error-text') 
+          ? input.nextElementSibling 
+          : document.createElement('span');
+
+        errorText.className = 'error-text text-red-600 text-sm mt-1 hidden';
         
         if (!input.value.trim()) {
           isValid = false;
-          input.classList.add('border-red-500');
-          if (!errorMessage) {
-            const error = document.createElement('p');
-            error.className = 'error-text text-red-500 text-sm mt-1';
-            error.textContent = `${input.name || 'This field'} is required`;
-            input.parentNode.appendChild(error);
+          errorText.textContent = `${input.name.replace(/([A-Z])/g, ' $1')} is required`;
+          errorText.classList.remove('hidden');
+          if (!input.nextElementSibling?.classList.contains('error-text')) {
+            input.parentNode.appendChild(errorText);
           }
         } else {
-          input.classList.remove('border-red-500');
-          if (errorMessage) errorMessage.remove();
+          errorText.classList.add('hidden');
         }
 
         if (input.type === 'email' && input.value.trim()) {
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
           if (!emailRegex.test(input.value)) {
             isValid = false;
-            input.classList.add('border-red-500');
-            if (!errorMessage) {
-              const error = document.createElement('p');
-              error.className = 'error-text text-red-500 text-sm mt-1';
-              error.textContent = 'Please enter a valid email address';
-              input.parentNode.appendChild(error);
+            errorText.textContent = 'Please enter a valid email address';
+            errorText.classList.remove('hidden');
+            if (!input.nextElementSibling?.classList.contains('error-text')) {
+              input.parentNode.appendChild(errorText);
             }
           }
         }
@@ -1584,62 +1724,16 @@
       return isValid;
     }
 
-    // Location Search
-    function searchLocations(query) {
-      const resultsContainer = document.getElementById('location-results');
-      resultsContainer.innerHTML = '';
-      
-      const filteredLocations = AppState.locations.filter(loc => 
-        loc.city.toLowerCase().includes(query.toLowerCase()) || 
-        loc.address.toLowerCase().includes(query.toLowerCase()) ||
-        loc.name.toLowerCase().includes(query.toLowerCase()) ||
-        query === ''
-      );
-
-      if (filteredLocations.length === 0) {
-        resultsContainer.innerHTML = '<p class="text-fedex-gray text-center col-span-2">No locations found matching your search.</p>';
-        return;
-      }
-
-      filteredLocations.forEach(loc => {
-        const locationCard = document.createElement('div');
-        locationCard.className = 'border border-gray-200 rounded-lg p-4 service-card';
-        locationCard.innerHTML = `
-          <h3 class="font-bold text-fedex-dark-gray mb-2">${loc.name}</h3>
-          <p class="text-fedex-gray text-sm">${loc.address}</p>
-          <p class="text-fedex-gray text-sm">${loc.city}</p>
-          <p class="text-fedex-gray text-sm">Phone: ${loc.phone}</p>
-          <p class="text-fedex-gray text-sm">Hours: ${loc.hours}</p>
-        `;
-        resultsContainer.appendChild(locationCard);
-      });
-    }
-
     // Tracking Functions
     function trackPackage(trackingNumber) {
-      const data = trackingDatabase[trackingNumber.toUpperCase()];
-      if (data) {
-        displayTrackingModal(data);
+      if (trackingDatabase[trackingNumber]) {
+        AppState.trackingData = trackingDatabase[trackingNumber];
+        document.getElementById('modal-tracking-number').textContent = trackingNumber;
+        document.getElementById('modal-content').innerHTML = generateTrackingContent(AppState.trackingData);
+        showModal('tracking-modal');
         return true;
       }
       return false;
-    }
-
-    function displayTrackingModal(data) {
-      const modal = document.getElementById('tracking-modal');
-      const modalContent = document.getElementById('modal-content');
-      const trackingNumberElement = document.getElementById('modal-tracking-number');
-      
-      trackingNumberElement.textContent = data.trackingNumber;
-      modalContent.innerHTML = generateTrackingContent(data);
-      
-      showModal('tracking-modal');
-      
-      // Send notification email (simulated)
-      setTimeout(() => {
-        console.log(`📧 Clearance notification sent to ${data.recipient.email}: Package ${data.trackingNumber} awaits your clearance approval.`);
-        showNotification('Clearance notification sent to recipient', 'info');
-      }, 1000);
     }
 
     function generateTrackingContent(data) {
@@ -1648,7 +1742,7 @@
         { name: 'Awaiting Clearance', icon: 'clipboard-check', status: 'current' },
         { name: 'In Transit', icon: 'plane', status: '' },
         { name: 'Out for Delivery', icon: 'truck', status: '' },
-        { name: 'Delivered', icon: 'home', status: '' }
+        { name: 'Delivered', icon: 'home', status: '' },
       ];
 
       return `
@@ -1667,8 +1761,8 @@
             </div>
             <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
               <button 
-                onclick="generatePDF('${data.trackingNumber}')" 
-                class="fedex-button text-white px-4 sm:px-6 py-3 rounded-lg font-semibold text-sm sm:text-base w-full sm:w-auto"
+                class="download-receipt-btn fedex-button text-white px-4 sm:px-6 py-3 rounded-lg font-semibold text-sm sm:text-base w-full sm:w-auto"
+                data-tracking-number="${data.trackingNumber}"
               >
                 <i class="fas fa-file-pdf mr-2"></i>Download Receipt
               </button>
@@ -1717,14 +1811,26 @@
         <div class="mb-8">
           <h3 class="text-lg sm:text-xl font-bold text-fedex-dark-gray mb-6">Shipment Journey</h3>
           <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-4">
-            ${progressSteps.map(step => `
+            ${progressSteps
+              .map(
+                (step) => `
               <div class="progress-step ${step.status} text-center">
-                <div class="w-8 h-8 sm:w-12 sm:h-12 ${step.status === 'completed' ? 'bg-fedex-green' : step.status === 'current' ? 'bg-fedex-orange' : 'bg-gray-300'} rounded-full flex items-center justify-center mx-auto mb-2 relative z-10">
+                <div class="w-8 h-8 sm:w-12 sm:h-12 ${
+                  step.status === 'completed'
+                    ? 'bg-fedex-green'
+                    : step.status === 'current'
+                    ? 'bg-fedex-orange'
+                    : 'bg-gray-300'
+                } rounded-full flex items-center justify-center mx-auto mb-2 relative z-10">
                   <i class="fas fa-${step.icon} text-white text-xs sm:text-base"></i>
                 </div>
-                <h4 class="font-semibold ${step.status ? 'text-fedex-dark-gray' : 'text-gray-400'} text-xs sm:text-sm">${step.name}</h4>
+                <h4 class="font-semibold ${
+                  step.status ? 'text-fedex-dark-gray' : 'text-gray-400'
+                } text-xs sm:text-sm">${step.name}</h4>
               </div>
-            `).join('')}
+            `
+              )
+              .join('')}
           </div>
         </div>
 
@@ -1734,21 +1840,29 @@
           <div>
             <h3 class="text-lg sm:text-xl font-bold text-fedex-dark-gray mb-6">Shipment Timeline</h3>
             <div class="relative">
-              ${data.timeline.map((event, index) => `
+              ${data.timeline
+                .map(
+                  (event, index) => `
                 <div class="timeline-item mb-6 pl-4 sm:pl-6 relative">
-                  <div class="timeline-dot ${event.isLatest ? 'bg-fedex-orange' : 'bg-fedex-green'}"></div>
+                  <div class="timeline-dot ${
+                    event.isLatest ? 'bg-fedex-orange' : 'bg-fedex-green'
+                  }"></div>
                   ${index < data.timeline.length - 1 ? '<div class="timeline-line"></div>' : ''}
                   <div class="bg-white border border-gray-200 rounded-lg p-3 sm:p-4">
                     <div class="flex justify-between items-start mb-2">
                       <h4 class="font-semibold text-fedex-dark-gray text-sm sm:text-base">${event.status}</h4>
-                      <span class="text-xs sm:text-sm text-fedex-gray">${event.isLatest ? 'Current' : 'Completed'}</span>
+                      <span class="text-xs sm:text-sm text-fedex-gray">${
+                        event.isLatest ? 'Current' : 'Completed'
+                      }</span>
                     </div>
                     <p class="text-fedex-gray mb-1 text-sm">${event.location}</p>
                     <p class="text-xs sm:text-sm text-fedex-gray">${event.date} ${event.time}</p>
                     <p class="text-xs sm:text-sm text-fedex-gray mt-2">${event.description}</p>
                   </div>
                 </div>
-              `).join('')}
+              `
+                )
+                .join('')}
             </div>
           </div>
 
@@ -1852,260 +1966,120 @@
       `;
     }
 
-    // PDF Generation with "FEDEX DELIVERY" header
-    function generatePDF(trackingNumber) {
-      const data = trackingDatabase[trackingNumber];
-      if (!data) return;
-
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-
-      // FedEx Header - Combined
-      doc.setFillColor(77, 20, 140);
-      doc.rect(0, 0, 210, 25, 'F');
-
-      // FedEx Delivery Logo
-      doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(24);
-      doc.text('FEDEX DELIVERY', 60, 17);
-
-      // Document title
-      doc.setTextColor(0, 0, 0);
-      doc.setFontSize(18);
-      doc.setFont('helvetica', 'bold');
-      doc.text('SHIPMENT RECEIPT', 20, 40);
-
-      // Receipt details
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Receipt #: FDX-${data.trackingNumber}`, 20, 50);
-      doc.text(`Created on: ${new Date().toLocaleDateString()}`, 140, 50);
-
-      // Official stamp
-      doc.setDrawColor(200, 0, 0);
-      doc.setLineWidth(0.5);
-      doc.circle(180, 35, 15, 'S');
-      doc.setFontSize(8);
-      doc.setTextColor(200, 0, 0);
-      doc.text('OFFICIAL FEDEX STAMP', 170, 30);
-      doc.text('PARIS FACILITY', 172, 35);
-      doc.text('JUN 22 2025', 174, 40);
-
-      // Tracking information
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(0, 0, 0);
-      doc.text('TRACKING INFORMATION', 20, 65);
-
-      let yPos = 75;
-      const trackingInfo = [
-        ['Tracking Number:', data.trackingNumber],
-        ['Service Type:', data.service],
-        ['Current Status:', data.status],
-        ['Ship Date:', data.shipDate],
-        ['Expected Delivery:', data.estimatedDelivery],
-        ['Current Location:', data.currentLocation]
-      ];
-
-      doc.setFontSize(10);
-      trackingInfo.forEach(([label, value]) => {
-        doc.setFont('helvetica', 'bold');
-        doc.text(label, 20, yPos);
-        doc.setFont('helvetica', 'normal');
-        doc.text(value, 80, yPos);
-        yPos += 8;
-      });
-
-      // Package details
-      yPos += 10;
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text('PACKAGE DETAILS', 20, yPos);
-      yPos += 10;
-
-      const packageInfo = [
-        ['Weight:', data.weight],
-        ['Dimensions:', data.dimensions],
-        ['Declared Value:', data.declaredValue],
-        ['Contents:', data.contents],
-        ['Reference:', data.reference],
-        ['Insurance:', data.insurance]
-      ];
-
-      doc.setFontSize(10);
-      packageInfo.forEach(([label, value]) => {
-        doc.setFont('helvetica', 'bold');
-        doc.text(label, 20, yPos);
-        doc.setFont('helvetica', 'normal');
-        const textLines = doc.splitTextToSize(value, 110);
-        doc.text(textLines, 80, yPos);
-        yPos += textLines.length * 6;
-      });
-
-      // Addresses
-      yPos += 10;
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text('SHIPPING ADDRESSES', 20, yPos);
-      yPos += 10;
-
-      // From address
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.text('FROM:', 20, yPos);
-      yPos += 6;
-      doc.setFont('helvetica', 'normal');
-      doc.text(data.sender.name, 20, yPos);
-      yPos += 5;
-      doc.text(data.sender.company, 20, yPos);
-      yPos += 5;
-      doc.text(data.sender.address, 20, yPos);
-      yPos += 5;
-      doc.text(data.sender.city, 20, yPos);
-      yPos += 5;
-      doc.text(data.sender.phone, 20, yPos);
-      yPos += 15;
-
-      // To address
-      doc.setFont('helvetica', 'bold');
-      doc.text('TO:', 20, yPos);
-      yPos += 6;
-      doc.setFont('helvetica', 'normal');
-      doc.text(data.recipient.name, 20, yPos);
-      yPos += 5;
-      doc.text(data.recipient.address, 20, yPos);
-      yPos += 5;
-      doc.text(data.recipient.city, 20, yPos);
-      yPos += 5;
-      doc.text(data.recipient.phone, 20, yPos);
-
-      // Barcode simulation
-      doc.setLineWidth(1);
-      for (let i = 0; i < 50; i++) {
-        const x = 120 + i * 2;
-        const height = Math.random() * 10 + 5;
-        doc.line(x, 260, x, 260 + height);
-      }
-      doc.setFontSize(8);
-      doc.text(data.trackingNumber, 140, 275);
-
-      // Footer
-      doc.setFontSize(8);
-      doc.setTextColor(77, 20, 140);
-      doc.text('© 2025 FedEx Corporation. All rights reserved.', 20, 280);
-      doc.text('Official FedEx Delivery Receipt', 20, 285);
-      
-      // Official seal
-      doc.setDrawColor(77, 20, 140);
-      doc.setLineWidth(0.3);
-      doc.circle(180, 270, 10, 'S');
-      doc.setFontSize(6);
-      doc.text('FEDEX SEAL', 175, 270);
-
-      doc.save(`FedEx-Receipt-${data.trackingNumber}.pdf`);
-      showNotification('Receipt downloaded successfully!', 'success');
-    }
-
     // Email Updates
     function requestEmailUpdates(trackingNumber) {
-      const data = trackingDatabase[trackingNumber];
-      if (data) {
-        showNotification(`Email updates will be sent to: ${data.recipient.email}`, 'success');
-        console.log(`📧 Email subscription set up for ${trackingNumber} to ${data.recipient.email}`);
-        
-        // Simulate sending initial email
-        setTimeout(() => {
-          console.log(`📧 Initial update sent to ${data.recipient.email}: Your package ${trackingNumber} status - ${data.status}`);
-        }, 2000);
-      }
+      showNotification(`Email updates activated for tracking number ${trackingNumber}!`, 'success');
     }
 
-    // Clearance Modal Functions
+    // Clearance Modal
     function openClearanceModal(trackingNumber) {
+      document.getElementById('clearance-form').dataset.trackingNumber = trackingNumber;
       showModal('clearance-modal');
     }
 
     function closeClearanceModal() {
       closeModal('clearance-modal');
+      document.getElementById('clearance-form').reset();
     }
 
-    // Live Chat Functions
+    // Tab Navigation
+    function showTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      document.querySelectorAll('.tab-button').forEach(button => button.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+    }
+
+    // FAQ Toggle
+    function toggleFaq(element) {
+      const answer = element.querySelector('.faq-answer');
+      const icon = element.querySelector('.fa-chevron-down');
+      answer.classList.toggle('active');
+      icon.classList.toggle('fa-chevron-up');
+    }
+
+    // Live Chat
     function openLiveChat() {
       showModal('chat-modal');
     }
 
     function sendChatMessage(message) {
-      const messagesContainer = document.getElementById('chat-messages');
-      
-      // Add user message
+      const chatMessages = document.getElementById('chat-messages');
       const userMessage = document.createElement('div');
       userMessage.className = 'mb-4 text-right';
       userMessage.innerHTML = `
-        <div class="bg-fedex-purple text-white rounded-lg p-3 inline-block max-w-xs">
-          <p class="text-sm">${message}</p>
+        <div class="bg-fedex-light-gray rounded-lg p-3 inline-block">
+          <p class="text-sm"><strong>You:</strong> ${message}</p>
         </div>
       `;
-      messagesContainer.appendChild(userMessage);
-      
-      // Simulate agent response
+      chatMessages.appendChild(userMessage);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+
+      // Simulate bot response
       setTimeout(() => {
-        const agentMessage = document.createElement('div');
-        agentMessage.className = 'mb-4';
-        agentMessage.innerHTML = `
-          <div class="bg-gray-100 rounded-lg p-3 max-w-xs">
-            <p class="text-sm"><strong>Support Agent:</strong> Thank you for your message. How can I assist you further with your shipment?</p>
+        const botMessage = document.createElement('div');
+        botMessage.className = 'mb-4';
+        botMessage.innerHTML = `
+          <div class="bg-gray-100 rounded-lg p-3">
+            <p class="text-sm"><strong>Support Agent:</strong> Thank you for your message! How else can I assist you?</p>
           </div>
         `;
-        messagesContainer.appendChild(agentMessage);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        chatMessages.appendChild(botMessage);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
       }, 1000);
-      
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+      AppState.chatMessages.push({ sender: 'user', message, timestamp: new Date() });
     }
 
-    // Event Listeners Setup
-    document.addEventListener('DOMContentLoaded', function() {
-      setupEventListeners();
-      searchLocations(''); // Initialize location results
-      
-      console.log('🚚 FedEx Tracking System Ready');
-      console.log('📦 Package FD26031998KR registered at FedEx Office Paris');
-      console.log('📧 Email notifications configured for: fedexpressdeliveryservices321@gmail.com');
-      
-      // Simulate real-time updates
-      setInterval(() => {
-        console.log('🔄 System update: Checking clearance approval status...');
-      }, 60000);
-    });
+    // Location Search
+    function searchLocations(query) {
+      const resultsContainer = document.getElementById('location-results');
+      const filteredLocations = query 
+        ? AppState.locations.filter(loc => 
+            loc.city.toLowerCase().includes(query.toLowerCase()) ||
+            loc.address.toLowerCase().includes(query.toLowerCase())
+          )
+        : AppState.locations;
 
+      resultsContainer.innerHTML = filteredLocations.map(loc => `
+        <div class="p-4 border border-gray-200 rounded-lg">
+          <h4 class="font-bold text-fedex-dark-gray mb-2">${loc.name}</h4>
+          <p class="text-fedex-gray text-sm">${loc.address}</p>
+          <p class="text-fedex-gray text-sm">${loc.city}</p>
+          <p class="text-fedex-gray text-sm">Phone: ${loc.phone}</p>
+          <p class="text-fedex-gray text-sm">Hours: ${loc.hours}</p>
+        </div>
+      `).join('');
+    }
+
+    // Event Listeners
     function setupEventListeners() {
       // Tracking form
       const trackingForm = document.getElementById('tracking-form');
-      trackingForm.addEventListener('submit', function(e) {
+      trackingForm.addEventListener('submit', function (e) {
         e.preventDefault();
         const trackingNumber = document.getElementById('tracking-number').value.trim();
         const trackButton = document.getElementById('track-button');
         const trackText = document.getElementById('track-text');
         const trackLoading = document.getElementById('track-loading');
-        
+
         if (!trackingNumber) {
           showNotification('Please enter a tracking number', 'error');
           return;
         }
-        
+
         // Show loading state
         trackText.classList.add('hidden');
         trackLoading.classList.remove('hidden');
         trackButton.disabled = true;
-        
+
         setTimeout(() => {
           if (trackPackage(trackingNumber)) {
             showNotification('Package found! Loading tracking information...', 'success');
           } else {
             showNotification('Tracking number not found. Please check and try again.', 'error');
           }
-          
+
           // Reset button state
           trackText.classList.remove('hidden');
           trackLoading.classList.add('hidden');
@@ -2114,7 +2088,7 @@
       });
 
       // Modal close buttons
-      document.getElementById('close-modal').addEventListener('click', function() {
+      document.getElementById('close-modal').addEventListener('click', function () {
         closeModal('tracking-modal');
       });
 
@@ -2122,10 +2096,10 @@
       document.getElementById('cancel-clearance').addEventListener('click', closeClearanceModal);
 
       // Clearance form
-      document.getElementById('clearance-form').addEventListener('submit', function(e) {
+      document.getElementById('clearance-form').addEventListener('submit', function (e) {
         e.preventDefault();
         if (validateForm(this)) {
-          showNotification('Clearance request submitted successfully! You will receive confirmation at ultimatemadugba@gmail.com', 'success');
+          showNotification('Clearance request submitted successfully! You will receive confirmation at kdinanauth@yahoo.com', 'success');
           console.log('📧 Clearance request confirmation sent to fedexpressdeliveryservices231@gmail.com');
           closeClearanceModal();
         }
@@ -2133,7 +2107,7 @@
 
       // Contact form
       const contactForm = document.getElementById('contact-form');
-      contactForm.addEventListener('submit', function(e) {
+      contactForm.addEventListener('submit', function (e) {
         e.preventDefault();
         if (validateForm(this)) {
           showNotification('Message sent successfully! We will respond within 24 hours.', 'success');
@@ -2143,7 +2117,7 @@
 
       // Ship calculator form
       const shipCalculatorForm = document.getElementById('ship-calculator-form');
-      shipCalculatorForm.addEventListener('submit', function(e) {
+      shipCalculatorForm.addEventListener('submit', function (e) {
         e.preventDefault();
         if (validateForm(this)) {
           const estimatedRate = '$' + (Math.random() * 50 + 15).toFixed(2);
@@ -2153,7 +2127,7 @@
 
       // Location search form
       const locationSearchForm = document.getElementById('location-search-form');
-      locationSearchForm.addEventListener('submit', function(e) {
+      locationSearchForm.addEventListener('submit', function (e) {
         e.preventDefault();
         const query = document.getElementById('location-input').value.trim();
         searchLocations(query);
@@ -2161,21 +2135,30 @@
       });
 
       // Chat form
-      document.getElementById('chat-form').addEventListener('submit', function(e) {
+      document.getElementById('chat-form').addEventListener('submit', function (e) {
         e.preventDefault();
         const input = document.getElementById('chat-input');
         const message = input.value.trim();
-        
+
         if (message) {
           sendChatMessage(message);
           input.value = '';
         }
       });
 
+      // Download Receipt button (Event Delegation)
+      document.getElementById('modal-content').addEventListener('click', function (e) {
+        const button = e.target.closest('.download-receipt-btn');
+        if (button) {
+          const trackingNumber = button.dataset.trackingNumber;
+          generatePDF(trackingNumber);
+        }
+      });
+
       // Keyboard shortcuts
-      document.addEventListener('keydown', function(e) {
+      document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
-          document.querySelectorAll('.modal-backdrop').forEach(modal => {
+          document.querySelectorAll('.modal-backdrop').forEach((modal) => {
             if (!modal.classList.contains('hidden')) {
               const modalId = modal.id;
               closeModal(modalId);
@@ -2185,27 +2168,18 @@
       });
 
       // Window resize handler
-      window.addEventListener('resize', function() {
+      window.addEventListener('resize', function () {
         if (window.innerWidth >= 1024) {
           hideMobileMenu();
         }
       });
     }
 
-    // Make functions globally available
-    window.showPage = showPage;
-    window.showModal = showModal;
-    window.closeModal = closeModal;
-    window.toggleMobileMenu = toggleMobileMenu;
-    window.hideMobileMenu = hideMobileMenu;
-    window.trackPackage = trackPackage;
-    window.generatePDF = generatePDF;
-    window.requestEmailUpdates = requestEmailUpdates;
-    window.openClearanceModal = openClearanceModal;
-    window.closeClearanceModal = closeClearanceModal;
-    window.openLiveChat = openLiveChat;
-    window.showTab = showTab;
-    window.toggleFaq = toggleFaq;
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      setupEventListeners();
+      searchLocations(''); // Initialize location results
+    });
   </script>
 </body>
 </html>
