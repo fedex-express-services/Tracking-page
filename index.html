@@ -1,1 +1,2211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://puc.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests; block-all-mixed-content;">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Track Packages - FedEx</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap" rel="stylesheet">
 
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            'fedex-purple': '#4D148C',
+            'fedex-orange': '#FF6200',
+            'fedex-gray': '#767676',
+            'fedex-light-gray': '#F5F5F5',
+            'fedex-dark-gray': '#333333',
+            'fedex-blue': '#0071CE',
+            'fedex-green': '#6CBF00'
+          },
+          fontFamily: {
+            'fedex': ['Source Sans Pro', 'Arial', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * {
+      font-family: 'Source Sans Pro', Arial, sans-serif;
+    }
+
+    .fedex-shadow {
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .fedex-button {
+      background: #4D148C;
+      transition: all 0.3s ease;
+    }
+
+    .fedex-button:hover {
+      background: #3D0F6B;
+      transform: translateY(-1px);
+    }
+
+    .progress-container {
+      position: relative;
+      background: #E5E7EB;
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      background: linear-gradient(90deg, #FF6200, #4D148C);
+      height: 100%;
+      border-radius: 4px;
+      transition: width 2s ease-in-out;
+      position: relative;
+    }
+
+    .progress-bar::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      animation: shimmer 2s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .progress-step {
+      position: relative;
+      z-index: 2;
+    }
+
+    .progress-step::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 100%;
+      width: 100%;
+      height: 3px;
+      background: #E5E7EB;
+      z-index: 1;
+      transform: translateY(-50%);
+    }
+
+    .progress-step.completed::after {
+      background: #6CBF00;
+    }
+
+    .progress-step.current::after {
+      background: linear-gradient(90deg, #FF6200, #E5E7EB);
+    }
+
+    .progress-step:last-child::after {
+      display: none;
+    }
+
+    .modal-backdrop {
+      backdrop-filter: blur(4px);
+    }
+
+    .page-section {
+      display: none;
+    }
+
+    .page-section.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate-fade-in {
+      animation: fadeIn 0.5s ease-out;
+    }
+
+    .timeline-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      position: absolute;
+      left: -6px;
+      top: 6px;
+    }
+
+    .timeline-line {
+      width: 2px;
+      background: #E5E7EB;
+      position: absolute;
+      left: -1px;
+      top: 18px;
+      bottom: -18px;
+    }
+
+    .timeline-item:last-child .timeline-line {
+      display: none;
+    }
+
+    .map-container {
+      background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .route-line {
+      position: absolute;
+      top: 50%;
+      left: 10%;
+      right: 10%;
+      height: 4px;
+      background: linear-gradient(90deg, #4D148C, #FF6200, #6CBF00);
+      border-radius: 2px;
+      transform: translateY(-50%);
+    }
+
+    .route-marker {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      top: 50%;
+      transform: translateY(-50%);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      border: 2px solid white;
+    }
+
+    .route-marker.origin {
+      left: 10%;
+      background: #4D148C;
+    }
+
+    .route-marker.current {
+      left: 10%;
+      background: #FF6200;
+      animation: pulse 2s infinite;
+    }
+
+    .route-marker.destination {
+      right: 10%;
+      background: #6CBF00;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255, 98, 0, 0.7); }
+      50% { box-shadow: 0 0 0 15px rgba(255, 98, 0, 0); }
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-registered {
+      background: #FEF3C7;
+      color: #B45309;
+      border: 1px solid #FCD34D;
+    }
+
+    .status-in-transit {
+      background: #DBEAFE;
+      color: #1E40AF;
+      border: 1px solid #93C5FD;
+    }
+
+    .status-delivered {
+      background: #D1FAE5;
+      color: #065F46;
+      border: 1px solid #6EE7B7;
+    }
+
+    .clearance-notice {
+      background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+      border-left: 4px solid #F59E0B;
+    }
+
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      color: white;
+      font-weight: 600;
+      z-index: 1000;
+      animation: slideInRight 0.5s ease-out;
+      max-width: 350px;
+    }
+
+    .notification.success { background: #059669; }
+    .notification.error { background: #DC2626; }
+    .notification.info { background: #0284C7; }
+    .notification.warning { background: #D97706; }
+
+    @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #FF6200;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .service-card {
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .service-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .faq-item {
+      border-bottom: 1px solid #E5E7EB;
+      cursor: pointer;
+    }
+
+    .faq-answer {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+
+    .faq-answer.active {
+      max-height: 200px;
+    }
+
+    .typing-indicator {
+      display: inline-block;
+    }
+
+    .typing-indicator::after {
+      content: '|';
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
+
+    /* Tab Navigation */
+    .tab-button {
+      padding: 0.75rem 1.5rem;
+      border-bottom: 2px solid transparent;
+      transition: all 0.3s ease;
+    }
+
+    .tab-button.active {
+      border-bottom-color: #FF6200;
+      color: #4D148C;
+      font-weight: 600;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Form Error States */
+    .error-text {
+      display: block;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    /* Accessibility Focus */
+    .modal-content:focus {
+      outline: 2px solid #4D148C;
+      outline-offset: 2px;
+    }
+
+    /* FAQ Animation */
+    .faq-item .fa-chevron-up {
+      transform: rotate(180deg);
+      transition: transform 0.3s ease;
+    }
+
+    @media (max-width: 768px) {
+      .modal-content {
+        width: 95%;
+        max-height: 85vh;
+        margin: 2rem;
+      }
+      .progress-step h4 {
+        font-size: 0.75rem;
+      }
+      .progress-step p {
+        font-size: 0.65rem;
+      }
+      .timeline-item {
+        padding-left: 2rem;
+      }
+      .timeline-dot {
+        left: -4px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .modal-content {
+        width: 100%;
+        height: 100vh;
+        max-height: 100vh;
+        border-radius: 0;
+        margin: 0;
+      }
+      
+      .grid.lg\\:grid-cols-2 {
+        grid-template-columns: 1fr;
+      }
+      
+      .flex.space-x-3 {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .flex.space-x-3 > * {
+        margin-bottom: 0.75rem;
+      }
+      
+      .map-container {
+        height: 200px !important;
+      }
+    }
+  </style>
+</head>
+
+<body class="bg-white font-fedex">
+  <!-- Header -->
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-40">
+    <!-- Top Bar -->
+    <div class="bg-fedex-purple text-white py-1">
+      <div class="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
+        <div class="flex space-x-4">
+          <span>United States | English</span>
+        </div>
+        <div class="flex space-x-4">
+          <a href="#" class="hover:text-fedex-orange" onclick="showModal('support-modal')">Support</a>
+          <a href="#" class="hover:text-fedex-orange" onclick="showModal('contact-modal')">Contact</a>
+          <a href="#" class="hover:text-fedex-orange" onclick="showModal('locations-modal')">Locations</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Header -->
+    <div class="max-w-7xl mx-auto px-4 py-4">
+      <div class="flex items-center justify-between">
+        <!-- FedEx Logo -->
+        <div class="flex items-center cursor-pointer" onclick="showPage('main')">
+          <div class="bg-fedex-purple text-white px-3 py-2 font-bold text-2xl">Fed</div>
+          <div class="bg-fedex-orange text-white px-3 py-2 font-bold text-2xl">Ex</div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="hidden lg:flex space-x-8">
+          <a href="#" class="text-fedex-dark-gray hover:text-fedex-purple font-semibold" onclick="showModal('ship-modal')">Ship</a>
+          <a href="#" class="text-fedex-purple font-semibold border-b-2 border-fedex-orange pb-3" onclick="showPage('main')">Track</a>
+          <a href="#" class="text-fedex-dark-gray hover:text-fedex-purple font-semibold" onclick="showModal('manage-modal')">Manage</a>
+          <a href="#" class="text-fedex-dark-gray hover:text-fedex-purple font-semibold" onclick="showModal('support-modal')">Support</a>
+        </nav>
+
+        <!-- Mobile Menu -->
+        <button class="lg:hidden p-2" onclick="toggleMobileMenu()">
+          <i class="fas fa-bars text-2xl text-fedex-dark-gray"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile Menu -->
+  <div id="mobile-menu" class="lg:hidden bg-white border-b border-gray-200 hidden">
+    <div class="px-4 py-2 space-y-2">
+      <a href="#" class="block py-2 text-fedex-dark-gray hover:text-fedex-purple" onclick="showModal('ship-modal'); hideMobileMenu();">Ship</a>
+      <a href="#" class="block py-2 text-fedex-purple font-semibold" onclick="showPage('main'); hideMobileMenu();">Track</a>
+      <a href="#" class="block py-2 text-fedex-dark-gray hover:text-fedex-purple" onclick="showModal('manage-modal'); hideMobileMenu();">Manage</a>
+      <a href="#" class="block py-2 text-fedex-dark-gray hover:text-fedex-purple" onclick="showModal('support-modal'); hideMobileMenu();">Support</a>
+      <a href="#" class="block py-2 text-fedex-dark-gray hover:text-fedex-purple" onclick="showModal('contact-modal'); hideMobileMenu();">Contact</a>
+      <a href="#" class="block py-2 text-fedex-dark-gray hover:text-fedex-purple" onclick="showModal('locations-modal'); hideMobileMenu();">Locations</a>
+    </div>
+  </div>
+
+  <!-- Main Content Container -->
+  <div id="content-container">
+    <!-- MAIN TRACKING PAGE -->
+    <div id="main-page" class="page-section active">
+      <main class="min-h-screen bg-fedex-light-gray">
+        <!-- Hero Section -->
+        <section class="bg-white py-12">
+          <div class="max-w-6xl mx-auto px-4">
+            <div class="text-center mb-8">
+              <h1 class="text-4xl font-bold text-fedex-dark-gray mb-4">Track Your Package</h1>
+              <p class="text-xl text-fedex-gray">Enter your tracking number to get real-time updates</p>
+            </div>
+
+            <!-- Tracking Form -->
+            <div class="max-w-2xl mx-auto">
+              <div class="bg-white border border-gray-200 rounded-lg fedex-shadow p-6">
+                <form id="tracking-form">
+                  <div class="mb-4">
+                    <label class="block text-lg font-semibold text-fedex-dark-gray mb-3">
+                      Track by tracking number
+                    </label>
+                    <div class="relative">
+                      <input type="text" id="tracking-number" required class="w-full px-4 py-4 text-lg border-2 border-gray-300 rounded-lg focus:border-fedex-purple focus:outline-none transition-colors" placeholder="Enter tracking number (e.g., FD26031998KR)">
+                      <button type="submit" id="track-button" class="absolute right-2 top-2 fedex-button text-white px-6 py-2 rounded-lg font-semibold hover:bg-fedex-dark-gray transition-colors">
+                        <span id="track-text">Track</span>
+                        <span id="track-loading" class="hidden"><div class="loading-spinner"></div></span>
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Services Quick Links -->
+        <section class="py-12">
+          <div class="max-w-6xl mx-auto px-4">
+            <h2 class="text-3xl font-bold text-fedex-dark-gray text-center mb-8">Our Services</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div class="service-card bg-white rounded-lg fedex-shadow p-6 text-center" onclick="showModal('ship-modal')">
+                <div class="w-16 h-16 bg-fedex-purple rounded-full flex items-center justify-center mx-auto mb-4">
+                  <i class="fas fa-shipping-fast text-white text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-fedex-dark-gray mb-2">Ship</h3>
+                <p class="text-fedex-gray">Create shipping labels and schedule pickups</p>
+              </div>
+
+              <div class="service-card bg-white rounded-lg fedex-shadow p-6 text-center" onclick="showPage('main')">
+                <div class="w-16 h-16 bg-fedex-orange rounded-full flex items-center justify-center mx-auto mb-4">
+                  <i class="fas fa-search text-white text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-fedex-dark-gray mb-2">Track</h3>
+                <p class="text-fedex-gray">Monitor your shipments in real-time</p>
+              </div>
+
+              <div class="service-card bg-white rounded-lg fedex-shadow p-6 text-center" onclick="showModal('manage-modal')">
+                <div class="w-16 h-16 bg-fedex-blue rounded-full flex items-center justify-center mx-auto mb-4">
+                  <i class="fas fa-cog text-white text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-fedex-dark-gray mb-2">Manage</h3>
+                <p class="text-fedex-gray">Access your shipping history and preferences</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Package Delivery Insights -->
+        <section class="py-12 bg-white">
+          <div class="max-w-6xl mx-auto px-4">
+            <h2 class="text-2xl font-bold text-fedex-dark-gray mb-6">Package Delivery Insights</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div class="bg-gradient-to-br from-fedex-purple to-blue-600 text-white rounded-lg p-6">
+                <div class="flex items-center justify-between mb-4">
+                  <h3 class="text-lg font-bold">Daily Deliveries</h3>
+                  <i class="fas fa-truck text-2xl opacity-75"></i>
+                </div>
+                <p class="text-3xl font-bold mb-2">12.5M</p>
+                <p class="text-sm opacity-90">Packages delivered worldwide today</p>
+              </div>
+
+              <div class="bg-gradient-to-br from-fedex-orange to-red-500 text-white rounded-lg p-6">
+                <div class="flex items-center justify-between mb-4">
+                  <h3 class="text-lg font-bold">On-Time Rate</h3>
+                  <i class="fas fa-clock text-2xl opacity-75"></i>
+                </div>
+                <p class="text-3xl font-bold mb-2">98.7%</p>
+                <p class="text-sm opacity-90">Delivery performance this month</p>
+              </div>
+
+              <div class="bg-gradient-to-br from-fedex-green to-green-600 text-white rounded-lg p-6">
+                <div class="flex items-center justify-between mb-4">
+                  <h3 class="text-lg font-bold">Countries Served</h3>
+                  <i class="fas fa-globe text-2xl opacity-75"></i>
+                </div>
+                <p class="text-3xl font-bold mb-2">220+</p>
+                <p class="text-sm opacity-90">Countries and territories worldwide</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Tracking Modal -->
+  <div id="tracking-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden items-center justify-center z-50 p-2 sm:p-4">
+    <div class="bg-white rounded-lg w-full max-w-7xl max-h-[95vh] overflow-y-auto animate-fade-in modal-content">
+      <!-- Modal Header -->
+      <div class="bg-fedex-purple text-white p-4 sm:p-6 rounded-t-lg sticky top-0 z-10">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-xl sm:text-2xl font-bold">Tracking Details</h2>
+            <p class="text-fedex-orange text-sm sm:text-lg font-semibold" id="modal-tracking-number">FD26031998KR</p>
+          </div>
+          <button id="close-modal" class="text-white hover:text-fedex-orange text-xl sm:text-2xl">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Content -->
+      <div class="p-4 sm:p-6" id="modal-content">
+        <!-- Content will be populated by JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Clearance Modal -->
+  <div id="clearance-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-fade-in modal-content">
+      <div class="bg-fedex-purple text-white p-6 rounded-t-lg">
+        <div class="flex justify-between items-center">
+          <h2 class="text-2xl font-bold">Package Clearance Request</h2>
+          <button id="close-clearance-modal" class="text-white hover:text-fedex-orange text-2xl">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-6">
+        <h3 class="text-xl font-bold text-fedex-dark-gray mb-4">Request Package Clearance</h3>
+        <p class="text-fedex-gray mb-6">Your package is currently registered at FedEx Office Paris and requires clearance before we can proceed with shipping to your destination.</p>
+        <form id="clearance-form">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-fedex-dark-gray font-semibold mb-2">Full Name</label>
+              <input type="text" name="fullName" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-fedex-purple focus:outline-none" placeholder="Enter your full name" required>
+            </div>
+            <div>
+              <label class="block text-fedex-dark-gray font-semibold mb-2">Email Address</label>
+              <input type="email" name="email" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-fedex-purple focus:outline-none" placeholder="type email" value="kdinanauth@yahoo.com" required>
+            </div>
+            <div>
+              <label class="block text-fedex-dark-gray font-semibold mb-2">Phone Number</label>
+              <input type="tel" name="phone" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-fedex-purple focus:outline-none" placeholder="Enter your phone number" required>
+            </div>
+            <div>
+              <label class="block text-fedex-dark-gray font-semibold mb-2">Verification Document</label>
+              <input type="file" name="document" class="w-full px-4 py-3 border border-gray-300 rounded-lg" accept=".pdf,.jpg,.png" required>
+              <p class="text-sm text-fedex-gray mt-1">Upload ID or passport for verification</p>
+            </div>
+            <div>
+              <label class="block text-fedex-dark-gray font-semibold mb-2">Additional Notes</label>
+              <textarea name="notes" rows="4" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-fedex-purple focus:outline-none" placeholder="Any additional information..."></textarea>
+            </div>
+          </div>
+          
+          <div class="flex justify-end space-x-3 mt-6">
+            <button type="button" id="cancel-clearance" class="border border-gray-300 text-fedex-dark-gray px-6 py-3 rounded-lg font-semibold">
+              Cancel
+            </button>
+            <button type="submit" class="fedex-button text-white px-6 py-3 rounded-lg font-semibold">
+              Submit Clearance Request
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ship Modal -->
+  <div id="ship-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in modal-content">
+      <div class="bg-fedex-purple text-white p-6 rounded-t-lg">
+        <div class="flex justify-between items-center">
+          <h2 class="text-2xl font-bold">Ship with FedEx</h2>
+          <button onclick="closeModal('ship-modal')" class="text-white hover:text-fedex-orange text-2xl">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div>
+            <h3 class="text-xl font-bold text-fedex-purple mb-4">Create a Shipment</h3>
+            <div class="space-y-4">
+              <div class="border border-gray-200 rounded-lg p-4 hover:border-fedex-purple transition-colors cursor-pointer">
+                <h4 class="font-bold text-fedex-dark-gray mb-2">Domestic Shipping</h4>
+                <p class="text-fedex-gray text-sm">Ship within the United States with our comprehensive domestic services.</p>
+              </div>
+              <div class="border border-gray-200 rounded-lg p-4 hover:border-fedex-purple transition-colors cursor-pointer">
+                <h4 class="font-bold text-fedex-dark-gray mb-2">International Shipping</h4>
+                <p class="text-fedex-gray text-sm">Ship worldwide with our international shipping solutions.</p>
+              </div>
+            </div>
+            <button class="fedex-button text-white px-6 py-3 rounded-lg font-semibold mt-6 w-full">
+              Create Shipment
+            </button>
+          </div>
+          <div>
+            <h3 class="text-xl font-bold text-fedex-purple mb-4">Quick Ship Calculator</h3>
+            <form id="ship-calculator-form">
+              <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-fedex-dark-gray font-semibold mb-2">From ZIP</label>
+                    <input type="text" name="fromZip" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="90210" required>
+                  </div>
+                  <div>
+                    <label class="block text-fedex-dark-gray font-semibold mb-2">To ZIP</label>
+                    <input type="text" name="toZip" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="10001" required>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-fedex-dark-gray font-semibold mb-2">Weight (lbs)</label>
+                  <input type="number" name="weight" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="5" required>
+                </div>
+                <button type="submit" class="fedex-button text-white px-6 py-3 rounded-lg font-semibold w-full">
+                  Calculate Rate
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manage Modal -->
+  <div id="manage-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in modal-content">
+      <div class="bg-fedex-purple text-white p-6 rounded-t-lg">
+        <div class="flex justify-between items-center">
+          <h2 class="text-2xl font-bold">Manage Your Account</h2>
+          <button onclick="closeModal('manage-modal')" class="text-white hover:text-fedex-orange text-2xl">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div class="text-center p-4 border border-gray-200 rounded-lg hover:border-fedex-purple transition-colors">
+            <i class="fas fa-history text-fedex-orange text-3xl mb-3"></i>
+            <h3 class="font-bold text-fedex-dark-gray mb-2">Shipping History</h3>
+            <p class="text-fedex-gray text-sm">View your past shipments and tracking details</p>
+          </div>
+          <div class="text-center p-4 border border-gray-200 rounded-lg hover:border-fedex-purple transition-colors">
+            <i class="fas fa-user-cog text-fedex-orange text-3xl mb-3"></i>
+            <h3 class="font-bold text-fedex-dark-gray mb-2">Account Settings</h3>
+            <p class="text-fedex-gray text-sm">Update your profile and preferences</p>
+          </div>
+          <div class="text-center p-4 border border-gray-200 rounded-lg hover:border-fedex-purple transition-colors">
+            <i class="fas fa-address-book text-fedex-orange text-3xl mb-3"></i>
+            <h3 class="font-bold text-fedex-dark-gray mb-2">Address Book</h3>
+            <p class="text-fedex-gray text-sm">Manage your shipping addresses</p>
+          </div>
+          <div class="text-center p-4 border border-gray-200 rounded-lg hover:border-fedex-purple transition-colors">
+            <i class="fas fa-file-invoice text-fedex-orange text-3xl mb-3"></i>
+            <h3 class="font-bold text-fedex-dark-gray mb-2">Billing & Invoices</h3>
+            <p class="text-fedex-gray text-sm">View billing information and invoices</p>
+          </div>
+          <div class="text-center p-4 border border-gray-200 rounded-lg hover:border-fedex-purple transition-colors">
+            <i class="fas fa-bell text-fedex-orange text-3xl mb-3"></i>
+            <h3 class="font-bold text-fedex-dark-gray mb-2">Notifications</h3>
+            <p class="text-fedex-gray text-sm">Manage your notification preferences</p>
+          </div>
+          <div class="text-center p-4 border border-gray-200 rounded-lg hover:border-fedex-purple transition-colors">
+            <i class="fas fa-shield-alt text-fedex-orange text-3xl mb-3"></i>
+            <h3 class="font-bold text-fedex-dark-gray mb-2">Security</h3>
+            <p class="text-fedex-gray text-sm">Update password and security settings</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enhanced Support Modal with Tabs and FAQ -->
+  <div id="support-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in modal-content">
+      <div class="bg-fedex-purple text-white p-6 rounded-t-lg">
+        <div class="flex justify-between items-center">
+          <h2 class="text-2xl font-bold">Customer Support</h2>
+          <button onclick="closeModal('support-modal')" class="text-white hover:text-fedex-orange text-2xl" aria-label="Close Support Modal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-6">
+        <div class="flex space-x-4 mb-6">
+          <button class="tab-button active" data-tab="contact" onclick="showTab('contact')">Contact</button>
+          <button class="tab-button" data-tab="quick-help" onclick="showTab('quick-help')">Quick Help</button>
+          <button class="tab-button" data-tab="faq" onclick="showTab('faq')">FAQ</button>
+        </div>
+        <div id="contact" class="tab-content active">
+          <h3 class="text-xl font-bold text-fedex-purple mb-4">Contact Information</h3>
+          <div class="space-y-4">
+            <div class="flex items-center space-x-3">
+              <i class="fas fa-phone text-fedex-orange"></i>
+              <div>
+                <p class="font-semibold">1-800-GO-FEDEX (1-800-463-3339)</p>
+                <p class="text-sm text-fedex-gray">Available 24/7</p>
+              </div>
+            </div>
+            <div class="flex items-center space-x-3">
+              <i class="fas fa-envelope text-fedex-orange"></i>
+              <div>
+                <p class="font-semibold">fedexpressdeliveryservices321@gmail.com</p>
+                <p class="text-sm text-fedex-gray">Response within 24 hours</p>
+              </div>
+            </div>
+            <div class="flex items-center space-x-3">
+              <i class="fas fa-comments text-fedex-orange"></i>
+              <div>
+                <p class="font-semibold">Live Chat</p>
+                <button class="text-sm text-fedex-purple hover:underline" onclick="openLiveChat()" aria-label="Start Live Chat">Start Chat</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="quick-help" class="tab-content">
+          <h3 class="text-xl font-bold text-fedex-purple mb-4">Quick Help</h3>
+          <div class="space-y-3">
+            <div class="p-3 border border-gray-200 rounded-lg hover:border-fedex-purple transition-colors cursor-pointer" onclick="showPage('main')">
+              <h4 class="font-semibold">Track a Package</h4>
+              <p class="text-sm text-fedex-gray">Get real-time updates on your shipment</p>
+            </div>
+            <div class="p-3 border border-gray-200 rounded-lg hover:border-fedex-purple transition-colors cursor-pointer" onclick="showModal('ship-modal')">
+              <h4 class="font-semibold">Shipping Rates</h4>
+              <p class="text-sm text-fedex-gray">Calculate shipping costs and transit times</p>
+            </div>
+            <div class="p-3 border border-gray-200 rounded-lg hover:border-fedex-purple transition-colors cursor-pointer" onclick="showModal('locations-modal')">
+              <h4 class="font-semibold">Find Locations</h4>
+              <p class="text-sm text-fedex-gray">Locate nearby FedEx facilities</p>
+            </div>
+          </div>
+        </div>
+        <div id="faq" class="tab-content">
+          <h3 class="text-xl font-bold text-fedex-purple mb-4">Frequently Asked Questions</h3>
+          <div class="space-y-2">
+            <div class="faq-item p-3" onclick="toggleFaq(this)">
+              <div class="flex justify-between items-center">
+                <h4 class="font-semibold text-fedex-dark-gray">How do I track my package?</h4>
+                <i class="fas fa-chevron-down text-fedex-gray"></i>
+              </div>
+              <div class="faq-answer text-fedex-gray text-sm mt-2">
+                Enter your tracking number on the Track page to view real-time updates.
+              </div>
+            </div>
+            <div class="faq-item p-3" onclick="toggleFaq(this)">
+              <div class="flex justify-between items-center">
+                <h4 class="font-semibold text-fedex-dark-gray">What is a clearance request?</h4>
+                <i class="fas fa-chevron-down text-fedex-gray"></i>
+              </div>
+              <div class="faq-answer text-fedex-gray text-sm mt-2">
+                Some shipments require recipient verification before they can proceed.
+              </div>
+            </div>
+            <div class="faq-item p-3" onclick="toggleFaq(this)">
+              <div class="flex justify-between items-center">
+                <h4 class="font-semibold text-fedex-dark-gray">How can I schedule a pickup?</h4>
+                <i class="fas fa-chevron-down text-fedex-gray"></i>
+              </div>
+              <div class="faq-answer text-fedex-gray text-sm mt-2">
+                Use the Ship modal to schedule a pickup at your convenience.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contact Modal -->
+  <div id="contact-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in modal-content">
+      <div class="bg-fedex-purple text-white p-6 rounded-t-lg">
+        <div class="flex justify-between items-center">
+          <h2 class="text-2xl font-bold">Contact FedEx</h2>
+          <button onclick="closeModal('contact-modal')" class="text-white hover:text-fedex-orange text-2xl">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div>
+            <h3 class="text-xl font-bold text-fedex-purple mb-4">Get in Touch</h3>
+            <form id="contact-form">
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-fedex-dark-gray font-semibold mb-2">Full Name</label>
+                  <input type="text" name="fullName" class="w-full px-4 py-3 border border-gray-300 rounded-lg" required>
+                </div>
+                <div>
+                  <label class="block text-fedex-dark-gray font-semibold mb-2">Email</label>
+                  <input type="email" name="email" class="w-full px-4 py-3 border border-gray-300 rounded-lg" required>
+                </div>
+                <div>
+                  <label class="block text-fedex-dark-gray font-semibold mb-2">Subject</label>
+                  <select name="subject" class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                    <option>General Inquiry</option>
+                    <option>Tracking Issue</option>
+                    <option>Billing Question</option>
+                    <option>Shipping Problem</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-fedex-dark-gray font-semibold mb-2">Message</label>
+                  <textarea name="message" rows="5" class="w-full px-4 py-3 border border-gray-300 rounded-lg" required></textarea>
+                </div>
+                <button type="submit" class="fedex-button text-white px-6 py-3 rounded-lg font-semibold w-full">
+                  Send Message
+                </button>
+              </div>
+            </form>
+          </div>
+          <div>
+            <h3 class="text-xl font-bold text-fedex-purple mb-4">Office Locations</h3>
+            <div class="space-y-4">
+              <div class="p-4 border border-gray-200 rounded-lg">
+                <h4 class="font-bold text-fedex-dark-gray">Corporate Headquarters</h4>
+                <p class="text-fedex-gray">942 South Shady Grove Road</p>
+                <p class="text-fedex-gray">Memphis, TN 38120</p>
+                <p class="text-fedex-gray">Phone: (901) 818-7500</p>
+              </div>
+              <div class="p-4 border border-gray-200 rounded-lg">
+                <h4 class="font-bold text-fedex-dark-gray">International Hub - Paris</h4>
+                <p class="text-fedex-gray">15 Rue de la Paix</p>
+                <p class="text-fedex-gray">75001 Paris, France</p>
+                <p class="text-fedex-gray">Phone: +33 1 42 61 50 50</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enhanced Locations Modal with Search -->
+  <div id="locations-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in modal-content">
+      <div class="bg-fedex-purple text-white p-6 rounded-t-lg">
+        <div class="flex justify-between items-center">
+          <h2 class="text-2xl font-bold">Find FedEx Locations</h2>
+          <button onclick="closeModal('locations-modal')" class="text-white hover:text-fedex-orange text-2xl" aria-label="Close Locations Modal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-6">
+        <form id="location-search-form" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <input type="text" id="location-input" name="location" class="px-4 py-3 border border-gray-300 rounded-lg" placeholder="ZIP Code or City" required aria-label="Enter ZIP Code or City">
+          <select name="radius" class="px-4 py-3 border border-gray-300 rounded-lg" aria-label="Select Search Radius">
+            <option>5 miles</option>
+            <option>10 miles</option>
+            <option>25 miles</option>
+          </select>
+          <button type="submit" class="fedex-button text-white px-6 py-3 rounded-lg font-semibold">Find</button>
+        </form>
+        <div id="location-results" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Results populated by JavaScript -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- About FedEx Modal -->
+  <div id="about-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in modal-content">
+      <div class="bg-fedex-purple text-white p-6 rounded-t-lg">
+        <div class="flex justify-between items-center">
+          <h2 class="text-2xl font-bold">About FedEx</h2>
+          <button onclick="closeModal('about-modal')" class="text-white hover:text-fedex-orange text-2xl" aria-label="Close About Modal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-6">
+        <h3 class="text-xl font-bold text-fedex-purple mb-4">Our Mission</h3>
+        <p class="text-fedex-gray mb-6">FedEx connects people and possibilities around the world. We provide customers and businesses worldwide with a broad portfolio of transportation, e-commerce and business services.</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="text-center">
+            <i class="fas fa-globe text-fedex-purple text-4xl mb-3"></i>
+            <h4 class="font-bold text-fedex-dark-gray mb-2">Global Reach</h4>
+            <p class="text-fedex-gray">Serving 220+ countries and territories worldwide</p>
+          </div>
+          <div class="text-center">
+            <i class="fas fa-clock text-fedex-orange text-4xl mb-3"></i>
+            <h4 class="font-bold text-fedex-dark-gray mb-2">On-Time Delivery</h4>
+            <p class="text-fedex-gray">Industry-leading delivery performance</p>
+          </div>
+          <div class="text-center">
+            <i class="fas fa-shield-alt text-fedex-blue text-4xl mb-3"></i>
+            <h4 class="font-bold text-fedex-dark-gray mb-2">Secure Shipping</h4>
+            <p class="text-fedex-gray">Advanced security measures for all shipments</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sustainability Modal -->
+  <div id="sustainability-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in modal-content">
+      <div class="bg-fedex-purple text-white p-6 rounded-t-lg">
+        <div class="flex justify-between items-center">
+          <h2 class="text-2xl font-bold">Sustainability at FedEx</h2>
+          <button onclick="closeModal('sustainability-modal')" class="text-white hover:text-fedex-orange text-2xl" aria-label="Close Sustainability Modal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-6">
+        <h3 class="text-xl font-bold text-fedex-purple mb-4">Our Commitment to Sustainability</h3>
+        <p class="text-fedex-gray mb-6">FedEx is committed to reducing our environmental impact through innovative solutions and sustainable practices.</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="text-center p-4 border border-gray-200 rounded-lg service-card">
+            <i class="fas fa-leaf text-fedex-green text-3xl mb-3"></i>
+            <h4 class="font-bold text-fedex-dark-gray mb-2">Carbon Neutral Goals</h4>
+            <p class="text-fedex-gray text-sm">Targeting carbon-neutral operations by 2040.</p>
+          </div>
+          <div class="text-center p-4 border border-gray-200 rounded-lg service-card">
+            <i class="fas fa-recycle text-fedex-blue text-3xl mb-3"></i>
+            <h4 class="font-bold text-fedex-dark-gray mb-2">Sustainable Packaging</h4>
+            <p class="text-fedex-gray text-sm">Promoting recyclable and reusable materials.</p>
+          </div>
+          <div class="text-center p-4 border border-gray-200 rounded-lg service-card">
+            <i class="fas fa-bolt text-fedex-orange text-3xl mb-3"></i>
+            <h4 class="font-bold text-fedex-dark-gray mb-2">Electric Fleet</h4>
+            <p class="text-fedex-gray text-sm">Expanding our electric vehicle fleet.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Service Guide Modal -->
+  <div id="service-guide-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in modal-content">
+      <div class="bg-fedex-purple text-white p-6 rounded-t-lg">
+        <div class="flex justify-between items-center">
+          <h2 class="text-2xl font-bold">FedEx Service Guide</h2>
+          <button onclick="closeModal('service-guide-modal')" class="text-white hover:text-fedex-orange text-2xl" aria-label="Close Service Guide Modal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-6">
+        <h3 class="text-xl font-bold text-fedex-purple mb-4">Explore Our Services</h3>
+        <div class="flex space-x-4 mb-6">
+          <button class="tab-button active" data-tab="overview" onclick="showTab('overview')">Overview</button>
+          <button class="tab-button" data-tab="domestic" onclick="showTab('domestic')">Domestic</button>
+          <button class="tab-button" data-tab="international" onclick="showTab('international')">International</button>
+        </div>
+        <div id="overview" class="tab-content active">
+          <p class="text-fedex-gray mb-4">The FedEx Service Guide provides detailed information on all our shipping services, rates, and policies.</p>
+          <ul class="space-y-2 text-fedex-gray">
+            <li class="flex items-center"><i class="fas fa-check text-fedex-green mr-2"></i>Express delivery options</li>
+            <li class="flex items-center"><i class="fas fa-check text-fedex-green mr-2"></i>Freight services</li>
+            <li class="flex items-center"><i class="fas fa-check text-fedex-green mr-2"></i>Customs clearance support</li>
+          </ul>
+        </div>
+        <div id="domestic" class="tab-content">
+          <p class="text-fedex-gray mb-4">Domestic shipping services within the United States.</p>
+          <ul class="space-y-2 text-fedex-gray">
+            <li>FedEx Ground: Economical delivery in 1-5 days</li>
+            <li>FedEx Express: Overnight and 2-day options</li>
+          </ul>
+        </div>
+        <div id="international" class="tab-content">
+          <p class="text-fedex-gray mb-4">Global shipping solutions for over 220 countries.</p>
+          <ul class="space-y-2 text-fedex-gray">
+            <li>FedEx International Priority: Fast delivery in 1-3 days</li>
+            <li>FedEx International Economy: Cost-effective global shipping</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shipping Tools Modal -->
+  <div id="shipping-tools-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in modal-content">
+      <div class="bg-fedex-purple text-white p-6 rounded-t-lg">
+        <div class="flex justify-between items-center">
+          <h2 class="text-2xl font-bold">Shipping Tools</h2>
+          <button onclick="closeModal('shipping-tools-modal')" class="text-white hover:text-fedex-orange text-2xl" aria-label="Close Shipping Tools Modal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-6">
+        <h3 class="text-xl font-bold text-fedex-purple mb-4">Streamline Your Shipping</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="p-4 border border-gray-200 rounded-lg service-card">
+            <i class="fas fa-barcode text-fedex-purple text-3xl mb-3"></i>
+            <h4 class="font-bold text-fedex-dark-gray mb-2">Label Creator</h4>
+            <p class="text-fedex-gray text-sm">Generate and print shipping labels online.</p>
+          </div>
+          <div class="p-4 border border-gray-200 rounded-lg service-card">
+            <i class="fas fa-truck text-fedex-orange text-3xl mb-3"></i>
+            <h4 class="font-bold text-fedex-dark-gray mb-2">Pickup Scheduler</h4>
+            <p class="text-fedex-gray text-sm">Schedule package pickups with ease.</p>
+          </div>
+          <div class="p-4 border border-gray-200 rounded-lg service-card">
+            <i class="fas fa-calculator text-fedex-blue text-3xl mb-3"></i>
+            <h4 class="font-bold text-fedex-dark-gray mb-2">Rate Estimator</h4>
+            <p class="text-fedex-gray text-sm">Calculate shipping costs instantly.</p>
+          </div>
+          <div class="p-4 border border-gray-200 rounded-lg service-card">
+            <i class="fas fa-globe text-fedex-green text-3xl mb-3"></i>
+            <h4 class="font-bold text-fedex-dark-gray mb-2">Customs Tools</h4>
+            <p class="text-fedex-gray text-sm">Prepare international shipping documents.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Privacy Policy Modal -->
+  <div id="privacy-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in modal-content">
+      <div class="bg-fedex-purple text-white p-6 rounded-t-lg">
+        <div class="flex justify-between items-center">
+          <h2 class="text-2xl font-bold">Privacy Policy</h2>
+          <button onclick="closeModal('privacy-modal')" class="text-white hover:text-fedex-orange text-2xl" aria-label="Close Privacy Policy Modal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-6">
+        <h3 class="text-lg font-bold text-fedex-purple mb-4">FedEx Privacy Policy</h3>
+        <p class="text-fedex-gray mb-4">We are committed to protecting your personal information. This policy outlines how we collect, use, and safeguard your data.</p>
+        <div class="space-y-4 text-fedex-gray">
+          <div>
+            <h4 class="font-semibold">Data Collection</h4>
+            <p>We collect information you provide, such as name, address, and payment details, to process shipments.</p>
+          </div>
+          <div>
+            <h4 class="font-semibold">Data Usage</h4>
+            <p>Your data is used to provide services, improve our platform, and communicate updates.</p>
+          </div>
+          <div>
+            <h4 class="font-semibold">Data Protection</h4>
+            <p>We employ industry-standard security measures to protect your information.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cookie Policy Modal -->
+  <div id="cookies-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in modal-content">
+      <div class="bg-fedex-purple text-white p-6 rounded-t-lg">
+        <div class="flex justify-between items-center">
+          <h2 class="text-2xl font-bold">Cookie Policy</h2>
+          <button onclick="closeModal('cookies-modal')" class="text-white hover:text-fedex-orange text-2xl" aria-label="Close Cookie Policy Modal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-6">
+        <h3 class="text-lg font-bold text-fedex-purple mb-4">FedEx Cookie Policy</h3>
+        <p class="text-fedex-gray mb-4">We use cookies to enhance your experience on our website.</p>
+        <div class="space-y-4 text-fedex-gray">
+          <div>
+            <h4 class="font-semibold">Types of Cookies</h4>
+            <p>Essential cookies for site functionality, analytics cookies for performance tracking, and marketing cookies for personalized ads.</p>
+          </div>
+          <div>
+            <h4 class="font-semibold">Managing Cookies</h4>
+            <p>You can control cookie preferences through your browser settings.</p>
+          </div>
+          <div>
+            <h4 class="font-semibold">Your Choices</h4>
+            <p>Accept or decline non-essential cookies via our cookie consent banner.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Additional Modals for Investors and Careers -->
+  <div id="investors-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in modal-content">
+      <div class="bg-fedex-purple text-white p-6 rounded-t-lg">
+        <div class="flex justify-between items-center">
+          <h2 class="text-2xl font-bold">Investor Relations</h2>
+          <button onclick="closeModal('investors-modal')" class="text-white hover:text-fedex-orange text-2xl">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-6">
+        <h3 class="text-xl font-bold text-fedex-purple mb-4">Financial Information</h3>
+        <p class="text-fedex-gray mb-6">Access the latest financial reports, earnings information, and investor resources for FedEx Corporation.</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="text-center p-4 border border-gray-200 rounded-lg">
+            <i class="fas fa-chart-line text-fedex-purple text-3xl mb-3"></i>
+            <h4 class="font-bold text-fedex-dark-gray mb-2">Quarterly Reports</h4>
+            <p class="text-fedex-gray">Latest financial performance</p>
+          </div>
+          <div class="text-center p-4 border border-gray-200 rounded-lg">
+            <i class="fas fa-calendar text-fedex-orange text-3xl mb-3"></i>
+            <h4 class="font-bold text-fedex-dark-gray mb-2">Events & Presentations</h4>
+            <p class="text-fedex-gray">Upcoming investor events</p>
+          </div>
+          <div class="text-center p-4 border border-gray-200 rounded-lg">
+            <i class="fas fa-file-alt text-fedex-blue text-3xl mb-3"></i>
+            <h4 class="font-bold text-fedex-dark-gray mb-2">SEC Filings</h4>
+            <p class="text-fedex-gray">Official regulatory documents</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="careers-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in modal-content">
+      <div class="bg-fedex-purple text-white p-6 rounded-t-lg">
+        <div class="flex justify-between items-center">
+          <h2 class="text-2xl font-bold">Careers at FedEx</h2>
+          <button onclick="closeModal('careers-modal')" class="text-white hover:text-fedex-orange text-2xl">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-6">
+        <h3 class="text-xl font-bold text-fedex-purple mb-4">Join Our Team</h3>
+        <p class="text-fedex-gray mb-6">At FedEx, we're always looking for talented individuals who share our passion for connecting the world.</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h4 class="font-bold text-fedex-dark-gray mb-3">Why Choose FedEx?</h4>
+            <ul class="space-y-2 text-fedex-gray">
+              <li class="flex items-center"><i class="fas fa-check text-fedex-green mr-2"></i> Competitive benefits package</li>
+              <li class="flex items-center"><i class="fas fa-check text-fedex-green mr-2"></i> Career advancement opportunities</li>
+              <li class="flex items-center"><i class="fas fa-check text-fedex-green mr-2"></i> Global work environment</li>
+              <li class="flex items-center"><i class="fas fa-check text-fedex-green mr-2"></i> Training and development programs</li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="font-bold text-fedex-dark-gray mb-3">Open Positions</h4>
+            <ul class="space-y-2 text-fedex-gray">
+              <li class="flex items-center"><i class="fas fa-briefcase text-fedex-orange mr-2"></i> Package Handler</li>
+              <li class="flex items-center"><i class="fas fa-briefcase text-fedex-orange mr-2"></i> Delivery Driver</li>
+              <li class="flex items-center"><i class="fas fa-briefcase text-fedex-orange mr-2"></i> Customer Service Representative</li>
+              <li class="flex items-center"><i class="fas fa-briefcase text-fedex-orange mr-2"></i> Operations Manager</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Terms Modal -->
+  <div id="terms-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in modal-content">
+      <div class="bg-fedex-purple text-white p-6 rounded-t-lg">
+        <div class="flex justify-between items-center">
+          <h2 class="text-2xl font-bold">Terms of Use</h2>
+          <button onclick="closeModal('terms-modal')" class="text-white hover:text-fedex-orange text-2xl">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-6">
+        <h3 class="text-lg font-bold text-fedex-purple mb-4">FedEx Terms of Service</h3>
+        <p class="text-fedex-gray mb-4">By using FedEx services, you agree to be bound by these terms and conditions...</p>
+        <div class="space-y-4 text-fedex-gray">
+          <p>1. Acceptance of Terms: By accessing and using FedEx services, you accept and agree to be bound by the terms and provision of this agreement.</p>
+          <p>2. Service Description: FedEx provides shipping and logistics services globally, including package delivery, freight, and supply chain solutions.</p>
+          <p>3. User Responsibilities: Users must provide accurate information and comply with all applicable laws and regulations.</p>
+          <p>4. Limitation of Liability: FedEx's liability is limited as specified in our service guide and applicable tariffs.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live Chat Modal -->
+  <div id="chat-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg max-w-md w-full h-96 flex flex-col">
+      <div class="bg-fedex-purple text-white p-4 rounded-t-lg">
+        <div class="flex justify-between items-center">
+          <h3 class="font-bold">Live Chat Support</h3>
+          <button onclick="closeModal('chat-modal')" class="text-white hover:text-fedex-orange">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      
+      <div class="flex-1 p-4 overflow-y-auto" id="chat-messages">
+        <div class="mb-4">
+          <div class="bg-gray-100 rounded-lg p-3 mb-2">
+            <p class="text-sm"><strong>Support Agent:</strong> Hello! How can I help you today?</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="p-4 border-t">
+        <form id="chat-form">
+          <div class="flex space-x-2">
+            <input type="text" id="chat-input" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-fedex-purple focus:outline-none" placeholder="Type your message...">
+            <button type="submit" class="fedex-button text-white px-4 py-2 rounded-lg">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-fedex-dark-gray text-white py-12">
+    <div class="max-w-6xl mx-auto px-4">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div>
+          <div class="flex items-center mb-4 cursor-pointer" onclick="showPage('main')">
+            <div class="bg-fedex-purple text-white px-2 py-1 font-bold text-lg">Fed</div>
+            <div class="bg-fedex-orange text-white px-2 py-1 font-bold text-lg">Ex</div>
+          </div>
+          <p class="text-gray-300">Connecting people and possibilities around the world.</p>
+        </div>
+
+        <div>
+          <h4 class="font-bold text-lg mb-4">Our Company</h4>
+          <ul class="space-y-2 text-gray-300">
+            <li><a href="#" class="hover:text-fedex-orange" onclick="showModal('about-modal')">About FedEx</a></li>
+            <li><a href="#" class="hover:text-fedex-orange" onclick="showModal('investors-modal')">Investor Relations</a></li>
+            <li><a href="#" class="hover:text-fedex-orange" onclick="showModal('careers-modal')">Careers</a></li>
+            <li><a href="#" class="hover:text-fedex-orange" onclick="showModal('sustainability-modal')">Sustainability</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="font-bold text-lg mb-4">Support</h4>
+          <ul class="space-y-2 text-gray-300">
+            <li><a href="#" class="hover:text-fedex-orange" onclick="showModal('support-modal')">Customer Support</a></li>
+            <li><a href="#" class="hover:text-fedex-orange" onclick="showModal('locations-modal')">Find Locations</a></li>
+            <li><a href="#" class="hover:text-fedex-orange" onclick="showModal('service-guide-modal')">Service Guide</a></li>
+            <li><a href="#" class="hover:text-fedex-orange" onclick="showModal('shipping-tools-modal')">Shipping Tools</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="font-bold text-lg mb-4">Connect</h4>
+          <div class="flex space-x-4 mb-4">
+            <a href="#" class="text-gray-300 hover:text-fedex-orange text-xl">
+              <i class="fab fa-facebook"></i>
+            </a>
+            <a href="#" class="text-gray-300 hover:text-fedex-orange text-xl">
+              <i class="fab fa-twitter"></i>
+            </a>
+            <a href="#" class="text-gray-300 hover:text-fedex-orange text-xl">
+              <i class="fab fa-linkedin"></i>
+            </a>
+            <a href="#" class="text-gray-300 hover:text-fedex-orange text-xl">
+              <i class="fab fa-instagram"></i>
+            </a>
+          </div>
+          <div class="text-gray-300">
+            <p class="text-sm">Emergency Support:</p>
+            <p class="font-semibold">1-800-FEDEX-911</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="border-t border-gray-600 mt-8 pt-8 text-center">
+        <p class="text-gray-300">© 2025 FedEx Corporation. All rights reserved.</p>
+        <div class="mt-2 space-x-4 text-sm">
+          <a href="#" class="text-gray-400 hover:text-white" onclick="showModal('terms-modal')">Terms of Use</a>
+          <a href="#" class="text-gray-400 hover:text-white" onclick="showModal('privacy-modal')">Privacy Policy</a>
+          <a href="#" class="text-gray-400 hover:text-white" onclick="showModal('cookies-modal')">Cookie Policy</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Application State
+    const AppState = {
+      currentPage: 'main',
+      trackingData: {},
+      notifications: [],
+      chatMessages: [],
+      locations: [
+        {
+          name: 'FedEx Office - Downtown',
+          address: '123 Main Street',
+          city: 'Anytown, ST 12345',
+          phone: '(521) 110-4512',
+          hours: 'Mon-Fri 8AM-9PM'
+        },
+        {
+          name: 'FedEx Ship Center',
+          address: '456 Business Ave',
+          city: 'Anytown, ST 12345',
+          phone: '(515) 1223-7541',
+          hours: 'Mon-Fri 7AM-7PM'
+        },
+        {
+          name: 'FedEx Office - Mall Location',
+          address: '789 Shopping Center Dr',
+          city: 'Anytown, ST 12345',
+          phone: '(531) 226-7780',
+          hours: 'Mon-Sat 9AM-9PM, Sun 10AM-6PM'
+        }
+      ]
+    };
+
+    // Mock tracking data for FD26031998KR
+    const trackingDatabase = {
+      'FD26031998KR': {
+        trackingNumber: 'FD26031998KR',
+        status: 'Awaiting Clearance',
+        service: 'FedEx International Priority',
+        currentLocation: 'FedEx Office Paris, France',
+        estimatedDelivery: 'Pending clearance approval',
+        shipDate: 'June 22, 2025',
+        weight: '2,840 lbs',
+        dimensions: '72" x 84" x 48"',
+        declaredValue: '$424,000.00',
+        contents: '3 Tesla vehicles, Diamond jewelry',
+        reference: 'HIGH-VALUE-SHIPMENT',
+        insurance: 'Full Coverage ($424,000.00)',
+        progress: 20,
+        requiresClearance: true,
+        sender: {
+          name: 'Keanu Reeves',
+          company: 'FedEx Office Paris',
+          address: '15 Rue de la Paix',
+          city: '75001 Paris, France',
+          phone: '+33 1 42 61 50 50'
+        },
+        recipient: {
+          name: 'Kavita Dinanauth',
+          address: '2103 Belladora Road',
+          city: 'Conway, SC 29527, USA',
+          email: 'kdinanauth@yahoo.com'
+        },
+        timeline: [
+          {
+            status: 'Awaiting recipient clearance',
+            location: 'PARIS, FR',
+            date: 'June 22, 2025',
+            time: '1:45 PM',
+            description: 'Package registered at FedEx Office Paris. Awaiting recipient clearance before shipping.',
+            isLatest: true,
+            type: 'clearance'
+          },
+          {
+            status: 'Registered at FedEx facility',
+            location: 'PARIS, FR',
+            date: 'June 22, 2025',
+            time: '1:45 PM',
+            description: 'High-value package registered and secured at FedEx Office Paris'
+          }
+        ]
+      }
+    };
+
+    // Dark mode detection
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.classList.add('dark');
+    }
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+      if (event.matches) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    });
+
+    // Utility Functions
+    function showNotification(message, type = 'info') {
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      notification.setAttribute('role', 'alert');
+      notification.innerHTML = `
+        <div class="flex items-center">
+          <i class="fas fa-${getNotificationIcon(type)} mr-2"></i>
+          <span>${message}</span>
+        </div>
+      `;
+      
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.style.animation = 'slideInRight 0.5s ease-out reverse';
+        setTimeout(() => notification.remove(), 500);
+      }, 4000);
+    }
+
+    function getNotificationIcon(type) {
+      const icons = {
+        success: 'check-circle',
+        error: 'exclamation-circle',
+        warning: 'exclamation-triangle',
+        info: 'info-circle'
+      };
+      return icons[type] || 'info-circle';
+    }
+
+    // Page Navigation
+    function showPage(pageId) {
+      document.querySelectorAll('.page-section').forEach(page => {
+        page.classList.remove('active');
+      });
+      
+      const targetPage = document.getElementById(pageId + '-page');
+      if (targetPage) {
+        targetPage.classList.add('active');
+        AppState.currentPage = pageId;
+      }
+      
+      hideMobileMenu();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Modal Functions
+    function showModal(modalId) {
+      const modal = document.getElementById(modalId);
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        modal.querySelector('.modal-content').focus();
+      }
+      hideMobileMenu();
+    }
+
+    function closeModal(modalId) {
+      const modal = document.getElementById(modalId);
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    // Mobile Menu Functions
+    function toggleMobileMenu() {
+      const mobileMenu = document.getElementById('mobile-menu');
+      mobileMenu.classList.toggle('hidden');
+    }
+
+    function hideMobileMenu() {
+      const mobileMenu = document.getElementById('mobile-menu');
+      mobileMenu.classList.add('hidden');
+    }
+
+    // Tab Navigation
+    function showTab(tabId) {
+      const tabs = document.querySelectorAll('.tab-content');
+      const buttons = document.querySelectorAll('.tab-button');
+      
+      tabs.forEach(tab => tab.classList.remove('active'));
+      buttons.forEach(btn => btn.classList.remove('active'));
+      
+      const targetTab = document.getElementById(tabId);
+      const targetButton = document.querySelector(`[data-tab="${tabId}"]`);
+      
+      if (targetTab) targetTab.classList.add('active');
+      if (targetButton) targetButton.classList.add('active');
+    }
+
+    // FAQ Toggle
+    function toggleFaq(element) {
+      const answer = element.querySelector('.faq-answer');
+      const icon = element.querySelector('.fa-chevron-down');
+      
+      answer.classList.toggle('active');
+      icon.classList.toggle('fa-chevron-down');
+      icon.classList.toggle('fa-chevron-up');
+    }
+
+    // Form Validation
+    function validateForm(form) {
+      const inputs = form.querySelectorAll('input[required], textarea[required], select[required]');
+      let isValid = true;
+
+      inputs.forEach(input => {
+        const errorMessage = input.nextElementSibling?.classList.contains('error-text') ? input.nextElementSibling : null;
+        
+        if (!input.value.trim()) {
+          isValid = false;
+          input.classList.add('border-red-500');
+          if (!errorMessage) {
+            const error = document.createElement('p');
+            error.className = 'error-text text-red-500 text-sm mt-1';
+            error.textContent = `${input.name || 'This field'} is required`;
+            input.parentNode.appendChild(error);
+          }
+        } else {
+          input.classList.remove('border-red-500');
+          if (errorMessage) errorMessage.remove();
+        }
+
+        if (input.type === 'email' && input.value.trim()) {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(input.value)) {
+            isValid = false;
+            input.classList.add('border-red-500');
+            if (!errorMessage) {
+              const error = document.createElement('p');
+              error.className = 'error-text text-red-500 text-sm mt-1';
+              error.textContent = 'Please enter a valid email address';
+              input.parentNode.appendChild(error);
+            }
+          }
+        }
+      });
+
+      return isValid;
+    }
+
+    // Location Search
+    function searchLocations(query) {
+      const resultsContainer = document.getElementById('location-results');
+      resultsContainer.innerHTML = '';
+      
+      const filteredLocations = AppState.locations.filter(loc => 
+        loc.city.toLowerCase().includes(query.toLowerCase()) || 
+        loc.address.toLowerCase().includes(query.toLowerCase()) ||
+        loc.name.toLowerCase().includes(query.toLowerCase()) ||
+        query === ''
+      );
+
+      if (filteredLocations.length === 0) {
+        resultsContainer.innerHTML = '<p class="text-fedex-gray text-center col-span-2">No locations found matching your search.</p>';
+        return;
+      }
+
+      filteredLocations.forEach(loc => {
+        const locationCard = document.createElement('div');
+        locationCard.className = 'border border-gray-200 rounded-lg p-4 service-card';
+        locationCard.innerHTML = `
+          <h3 class="font-bold text-fedex-dark-gray mb-2">${loc.name}</h3>
+          <p class="text-fedex-gray text-sm">${loc.address}</p>
+          <p class="text-fedex-gray text-sm">${loc.city}</p>
+          <p class="text-fedex-gray text-sm">Phone: ${loc.phone}</p>
+          <p class="text-fedex-gray text-sm">Hours: ${loc.hours}</p>
+        `;
+        resultsContainer.appendChild(locationCard);
+      });
+    }
+
+    // Tracking Functions
+    function trackPackage(trackingNumber) {
+      const data = trackingDatabase[trackingNumber.toUpperCase()];
+      if (data) {
+        displayTrackingModal(data);
+        return true;
+      }
+      return false;
+    }
+
+    function displayTrackingModal(data) {
+      const modal = document.getElementById('tracking-modal');
+      const modalContent = document.getElementById('modal-content');
+      const trackingNumberElement = document.getElementById('modal-tracking-number');
+      
+      trackingNumberElement.textContent = data.trackingNumber;
+      modalContent.innerHTML = generateTrackingContent(data);
+      
+      showModal('tracking-modal');
+      
+      // Send notification email (simulated)
+      setTimeout(() => {
+        console.log(`📧 Clearance notification sent to ${data.recipient.email}: Package ${data.trackingNumber} awaits your clearance approval.`);
+        showNotification('Clearance notification sent to recipient', 'info');
+      }, 1000);
+    }
+
+    function generateTrackingContent(data) {
+      const progressSteps = [
+        { name: 'Registered', icon: 'check', status: 'completed' },
+        { name: 'Awaiting Clearance', icon: 'clipboard-check', status: 'current' },
+        { name: 'In Transit', icon: 'plane', status: '' },
+        { name: 'Out for Delivery', icon: 'truck', status: '' },
+        { name: 'Delivered', icon: 'home', status: '' }
+      ];
+
+      return `
+        <!-- Status Section -->
+        <div class="bg-fedex-light-gray rounded-lg p-4 sm:p-6 mb-6">
+          <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0 mb-6">
+            <div>
+              <div class="flex items-center space-x-3 mb-3">
+                <span class="status-badge status-registered">
+                  <i class="fas fa-clock mr-2"></i>${data.status}
+                </span>
+                <span class="text-fedex-gray text-sm sm:text-base">${data.service}</span>
+              </div>
+              <p class="text-fedex-dark-gray font-semibold text-base sm:text-lg">Expected delivery: ${data.estimatedDelivery}</p>
+              <p class="text-fedex-gray text-sm sm:text-base">Currently at: ${data.currentLocation}</p>
+            </div>
+            <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
+              <button 
+                onclick="generatePDF('${data.trackingNumber}')" 
+                class="fedex-button text-white px-4 sm:px-6 py-3 rounded-lg font-semibold text-sm sm:text-base w-full sm:w-auto"
+              >
+                <i class="fas fa-file-pdf mr-2"></i>Download Receipt
+              </button>
+              <button 
+                onclick="requestEmailUpdates('${data.trackingNumber}')" 
+                class="border border-fedex-purple text-fedex-purple px-4 sm:px-6 py-3 rounded-lg font-semibold hover:bg-fedex-purple hover:text-white transition-colors text-sm sm:text-base w-full sm:w-auto"
+              >
+                <i class="fas fa-envelope mr-2"></i>Email Updates
+              </button>
+              <button 
+                onclick="openClearanceModal('${data.trackingNumber}')" 
+                class="bg-fedex-blue text-white px-4 sm:px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-sm sm:text-base w-full sm:w-auto"
+              >
+                <i class="fas fa-unlock mr-2"></i>Request Clearance
+              </button>
+            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="mb-4">
+            <div class="flex justify-between text-sm text-fedex-gray mb-2">
+              <span>Shipment Progress</span>
+              <span>${data.progress}% Complete</span>
+            </div>
+            <div class="progress-container">
+              <div class="progress-bar" style="width: ${data.progress}%"></div>
+            </div>
+          </div>
+
+          <!-- Clearance Notice -->
+          <div class="clearance-notice rounded-lg p-4">
+            <div class="flex items-start space-x-3">
+              <i class="fas fa-info-circle text-yellow-600 text-xl mt-1"></i>
+              <div>
+                <h4 class="font-bold text-yellow-800 mb-2">Clearance Required</h4>
+                <p class="text-yellow-700 text-sm">
+                  Your package is registered at FedEx Office Paris and requires clearance approval from the recipient before we can proceed with shipping. 
+                  Please submit a clearance request to begin the shipping process to ${data.recipient.city}.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress Steps -->
+        <div class="mb-8">
+          <h3 class="text-lg sm:text-xl font-bold text-fedex-dark-gray mb-6">Shipment Journey</h3>
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-4">
+            ${progressSteps.map(step => `
+              <div class="progress-step ${step.status} text-center">
+                <div class="w-8 h-8 sm:w-12 sm:h-12 ${step.status === 'completed' ? 'bg-fedex-green' : step.status === 'current' ? 'bg-fedex-orange' : 'bg-gray-300'} rounded-full flex items-center justify-center mx-auto mb-2 relative z-10">
+                  <i class="fas fa-${step.icon} text-white text-xs sm:text-base"></i>
+                </div>
+                <h4 class="font-semibold ${step.status ? 'text-fedex-dark-gray' : 'text-gray-400'} text-xs sm:text-sm">${step.name}</h4>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+          <!-- Timeline -->
+          <div>
+            <h3 class="text-lg sm:text-xl font-bold text-fedex-dark-gray mb-6">Shipment Timeline</h3>
+            <div class="relative">
+              ${data.timeline.map((event, index) => `
+                <div class="timeline-item mb-6 pl-4 sm:pl-6 relative">
+                  <div class="timeline-dot ${event.isLatest ? 'bg-fedex-orange' : 'bg-fedex-green'}"></div>
+                  ${index < data.timeline.length - 1 ? '<div class="timeline-line"></div>' : ''}
+                  <div class="bg-white border border-gray-200 rounded-lg p-3 sm:p-4">
+                    <div class="flex justify-between items-start mb-2">
+                      <h4 class="font-semibold text-fedex-dark-gray text-sm sm:text-base">${event.status}</h4>
+                      <span class="text-xs sm:text-sm text-fedex-gray">${event.isLatest ? 'Current' : 'Completed'}</span>
+                    </div>
+                    <p class="text-fedex-gray mb-1 text-sm">${event.location}</p>
+                    <p class="text-xs sm:text-sm text-fedex-gray">${event.date} ${event.time}</p>
+                    <p class="text-xs sm:text-sm text-fedex-gray mt-2">${event.description}</p>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Details Panel -->
+          <div>
+            <!-- Package Details -->
+            <div class="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 mb-6">
+              <h3 class="text-lg sm:text-xl font-bold text-fedex-dark-gray mb-4">Package Details</h3>
+              <div class="space-y-3 text-sm sm:text-base">
+                <div class="flex justify-between">
+                  <span class="text-fedex-gray">Service:</span>
+                  <span class="font-semibold">${data.service}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-fedex-gray">Weight:</span>
+                  <span class="font-semibold">${data.weight}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-fedex-gray">Dimensions:</span>
+                  <span class="font-semibold">${data.dimensions}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-fedex-gray">Declared Value:</span>
+                  <span class="font-semibold text-fedex-orange">${data.declaredValue}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-fedex-gray">Contents:</span>
+                  <span class="font-semibold">${data.contents}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-fedex-gray">Reference:</span>
+                  <span class="font-semibold">${data.reference}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Addresses -->
+            <div class="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 mb-6">
+              <h3 class="text-lg sm:text-xl font-bold text-fedex-dark-gray mb-4">Shipping Information</h3>
+              <div class="space-y-4 text-sm sm:text-base">
+                <div>
+                  <h4 class="font-semibold text-fedex-gray mb-2">From:</h4>
+                  <p class="text-fedex-dark-gray font-semibold">${data.sender.name}</p>
+                  <p class="text-fedex-gray">${data.sender.company}</p>
+                  <p class="text-fedex-gray">${data.sender.address}</p>
+                  <p class="text-fedex-gray">${data.sender.city}</p>
+                  <p class="text-fedex-gray">Phone: ${data.sender.phone}</p>
+                </div>
+                <div>
+                  <h4 class="font-semibold text-fedex-gray mb-2">To:</h4>
+                  <p class="text-fedex-dark-gray font-semibold">${data.recipient.name}</p>
+                  <p class="text-fedex-gray">${data.recipient.address}</p>
+                  <p class="text-fedex-gray">${data.recipient.city}</p>
+                  <p class="text-fedex-gray">Phone: ${data.recipient.phone}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Map -->
+            <div class="bg-white border border-gray-200 rounded-lg p-4 sm:p-6">
+              <h3 class="text-lg sm:text-xl font-bold text-fedex-dark-gray mb-4">
+                <i class="fas fa-map-marker-alt mr-2 text-fedex-orange"></i>Package Journey
+              </h3>
+              <div class="map-container rounded-lg overflow-hidden" style="height: 250px;">
+                <div class="relative w-full h-full">
+                  <div class="route-line"></div>
+                  <div class="route-marker origin"></div>
+                  <div class="route-marker current"></div>
+                  <div class="route-marker destination"></div>
+
+                  <div class="absolute top-4 left-4 bg-white px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-semibold text-fedex-purple shadow">
+                    <i class="fas fa-map-pin mr-1"></i> Paris, FR
+                  </div>
+                  <div class="absolute top-4 right-4 bg-white px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-semibold text-fedex-green shadow">
+                    <i class="fas fa-home mr-1"></i> Conway, SC
+                  </div>
+
+                  <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white px-2 sm:px-4 py-2 rounded-lg shadow text-center">
+                    <div class="text-xs text-fedex-gray">Estimated Distance</div>
+                    <div class="font-bold text-fedex-dark-gray text-sm">4,247 miles</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- High-Value Notice -->
+        <div class="mt-8 bg-red-50 border border-red-200 rounded-lg p-4 sm:p-6">
+          <div class="flex items-start space-x-3">
+            <i class="fas fa-shield-alt text-red-600 text-xl mt-1"></i>
+            <div>
+              <h4 class="font-semibold text-red-800 mb-2">High-Value Shipment</h4>
+              <p class="text-red-700 text-sm">
+                This shipment contains high-value items (${data.declaredValue}) and requires special handling procedures. 
+                Clearance approval and identity verification are mandatory before shipping can proceed.
+              </p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // PDF Generation with "FEDEX DELIVERY" header
+    function generatePDF(trackingNumber) {
+      const data = trackingDatabase[trackingNumber];
+      if (!data) return;
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      // FedEx Header - Combined
+      doc.setFillColor(77, 20, 140);
+      doc.rect(0, 0, 210, 25, 'F');
+
+      // FedEx Delivery Logo
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(24);
+      doc.text('FEDEX DELIVERY', 60, 17);
+
+      // Document title
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text('SHIPMENT RECEIPT', 20, 40);
+
+      // Receipt details
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Receipt #: FDX-${data.trackingNumber}`, 20, 50);
+      doc.text(`Created on: ${new Date().toLocaleDateString()}`, 140, 50);
+
+      // Official stamp
+      doc.setDrawColor(200, 0, 0);
+      doc.setLineWidth(0.5);
+      doc.circle(180, 35, 15, 'S');
+      doc.setFontSize(8);
+      doc.setTextColor(200, 0, 0);
+      doc.text('OFFICIAL FEDEX STAMP', 170, 30);
+      doc.text('PARIS FACILITY', 172, 35);
+      doc.text('JUN 22 2025', 174, 40);
+
+      // Tracking information
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 0, 0);
+      doc.text('TRACKING INFORMATION', 20, 65);
+
+      let yPos = 75;
+      const trackingInfo = [
+        ['Tracking Number:', data.trackingNumber],
+        ['Service Type:', data.service],
+        ['Current Status:', data.status],
+        ['Ship Date:', data.shipDate],
+        ['Expected Delivery:', data.estimatedDelivery],
+        ['Current Location:', data.currentLocation]
+      ];
+
+      doc.setFontSize(10);
+      trackingInfo.forEach(([label, value]) => {
+        doc.setFont('helvetica', 'bold');
+        doc.text(label, 20, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.text(value, 80, yPos);
+        yPos += 8;
+      });
+
+      // Package details
+      yPos += 10;
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PACKAGE DETAILS', 20, yPos);
+      yPos += 10;
+
+      const packageInfo = [
+        ['Weight:', data.weight],
+        ['Dimensions:', data.dimensions],
+        ['Declared Value:', data.declaredValue],
+        ['Contents:', data.contents],
+        ['Reference:', data.reference],
+        ['Insurance:', data.insurance]
+      ];
+
+      doc.setFontSize(10);
+      packageInfo.forEach(([label, value]) => {
+        doc.setFont('helvetica', 'bold');
+        doc.text(label, 20, yPos);
+        doc.setFont('helvetica', 'normal');
+        const textLines = doc.splitTextToSize(value, 110);
+        doc.text(textLines, 80, yPos);
+        yPos += textLines.length * 6;
+      });
+
+      // Addresses
+      yPos += 10;
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('SHIPPING ADDRESSES', 20, yPos);
+      yPos += 10;
+
+      // From address
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('FROM:', 20, yPos);
+      yPos += 6;
+      doc.setFont('helvetica', 'normal');
+      doc.text(data.sender.name, 20, yPos);
+      yPos += 5;
+      doc.text(data.sender.company, 20, yPos);
+      yPos += 5;
+      doc.text(data.sender.address, 20, yPos);
+      yPos += 5;
+      doc.text(data.sender.city, 20, yPos);
+      yPos += 5;
+      doc.text(data.sender.phone, 20, yPos);
+      yPos += 15;
+
+      // To address
+      doc.setFont('helvetica', 'bold');
+      doc.text('TO:', 20, yPos);
+      yPos += 6;
+      doc.setFont('helvetica', 'normal');
+      doc.text(data.recipient.name, 20, yPos);
+      yPos += 5;
+      doc.text(data.recipient.address, 20, yPos);
+      yPos += 5;
+      doc.text(data.recipient.city, 20, yPos);
+      yPos += 5;
+      doc.text(data.recipient.phone, 20, yPos);
+
+      // Barcode simulation
+      doc.setLineWidth(1);
+      for (let i = 0; i < 50; i++) {
+        const x = 120 + i * 2;
+        const height = Math.random() * 10 + 5;
+        doc.line(x, 260, x, 260 + height);
+      }
+      doc.setFontSize(8);
+      doc.text(data.trackingNumber, 140, 275);
+
+      // Footer
+      doc.setFontSize(8);
+      doc.setTextColor(77, 20, 140);
+      doc.text('© 2025 FedEx Corporation. All rights reserved.', 20, 280);
+      doc.text('Official FedEx Delivery Receipt', 20, 285);
+      
+      // Official seal
+      doc.setDrawColor(77, 20, 140);
+      doc.setLineWidth(0.3);
+      doc.circle(180, 270, 10, 'S');
+      doc.setFontSize(6);
+      doc.text('FEDEX SEAL', 175, 270);
+
+      doc.save(`FedEx-Receipt-${data.trackingNumber}.pdf`);
+      showNotification('Receipt downloaded successfully!', 'success');
+    }
+
+    // Email Updates
+    function requestEmailUpdates(trackingNumber) {
+      const data = trackingDatabase[trackingNumber];
+      if (data) {
+        showNotification(`Email updates will be sent to: ${data.recipient.email}`, 'success');
+        console.log(`📧 Email subscription set up for ${trackingNumber} to ${data.recipient.email}`);
+        
+        // Simulate sending initial email
+        setTimeout(() => {
+          console.log(`📧 Initial update sent to ${data.recipient.email}: Your package ${trackingNumber} status - ${data.status}`);
+        }, 2000);
+      }
+    }
+
+    // Clearance Modal Functions
+    function openClearanceModal(trackingNumber) {
+      showModal('clearance-modal');
+    }
+
+    function closeClearanceModal() {
+      closeModal('clearance-modal');
+    }
+
+    // Live Chat Functions
+    function openLiveChat() {
+      showModal('chat-modal');
+    }
+
+    function sendChatMessage(message) {
+      const messagesContainer = document.getElementById('chat-messages');
+      
+      // Add user message
+      const userMessage = document.createElement('div');
+      userMessage.className = 'mb-4 text-right';
+      userMessage.innerHTML = `
+        <div class="bg-fedex-purple text-white rounded-lg p-3 inline-block max-w-xs">
+          <p class="text-sm">${message}</p>
+        </div>
+      `;
+      messagesContainer.appendChild(userMessage);
+      
+      // Simulate agent response
+      setTimeout(() => {
+        const agentMessage = document.createElement('div');
+        agentMessage.className = 'mb-4';
+        agentMessage.innerHTML = `
+          <div class="bg-gray-100 rounded-lg p-3 max-w-xs">
+            <p class="text-sm"><strong>Support Agent:</strong> Thank you for your message. How can I assist you further with your shipment?</p>
+          </div>
+        `;
+        messagesContainer.appendChild(agentMessage);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }, 1000);
+      
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // Event Listeners Setup
+    document.addEventListener('DOMContentLoaded', function() {
+      setupEventListeners();
+      searchLocations(''); // Initialize location results
+      
+      console.log('🚚 FedEx Tracking System Ready');
+      console.log('📦 Package FD26031998KR registered at FedEx Office Paris');
+      console.log('📧 Email notifications configured for: fedexpressdeliveryservices321@gmail.com');
+      
+      // Simulate real-time updates
+      setInterval(() => {
+        console.log('🔄 System update: Checking clearance approval status...');
+      }, 60000);
+    });
+
+    function setupEventListeners() {
+      // Tracking form
+      const trackingForm = document.getElementById('tracking-form');
+      trackingForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const trackingNumber = document.getElementById('tracking-number').value.trim();
+        const trackButton = document.getElementById('track-button');
+        const trackText = document.getElementById('track-text');
+        const trackLoading = document.getElementById('track-loading');
+        
+        if (!trackingNumber) {
+          showNotification('Please enter a tracking number', 'error');
+          return;
+        }
+        
+        // Show loading state
+        trackText.classList.add('hidden');
+        trackLoading.classList.remove('hidden');
+        trackButton.disabled = true;
+        
+        setTimeout(() => {
+          if (trackPackage(trackingNumber)) {
+            showNotification('Package found! Loading tracking information...', 'success');
+          } else {
+            showNotification('Tracking number not found. Please check and try again.', 'error');
+          }
+          
+          // Reset button state
+          trackText.classList.remove('hidden');
+          trackLoading.classList.add('hidden');
+          trackButton.disabled = false;
+        }, 1500);
+      });
+
+      // Modal close buttons
+      document.getElementById('close-modal').addEventListener('click', function() {
+        closeModal('tracking-modal');
+      });
+
+      document.getElementById('close-clearance-modal').addEventListener('click', closeClearanceModal);
+      document.getElementById('cancel-clearance').addEventListener('click', closeClearanceModal);
+
+      // Clearance form
+      document.getElementById('clearance-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (validateForm(this)) {
+          showNotification('Clearance request submitted successfully! You will receive confirmation at ultimatemadugba@gmail.com', 'success');
+          console.log('📧 Clearance request confirmation sent to fedexpressdeliveryservices231@gmail.com');
+          closeClearanceModal();
+        }
+      });
+
+      // Contact form
+      const contactForm = document.getElementById('contact-form');
+      contactForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (validateForm(this)) {
+          showNotification('Message sent successfully! We will respond within 24 hours.', 'success');
+          this.reset();
+        }
+      });
+
+      // Ship calculator form
+      const shipCalculatorForm = document.getElementById('ship-calculator-form');
+      shipCalculatorForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (validateForm(this)) {
+          const estimatedRate = '$' + (Math.random() * 50 + 15).toFixed(2);
+          showNotification(`Estimated shipping rate: ${estimatedRate}`, 'success');
+        }
+      });
+
+      // Location search form
+      const locationSearchForm = document.getElementById('location-search-form');
+      locationSearchForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const query = document.getElementById('location-input').value.trim();
+        searchLocations(query);
+        showNotification(`Showing locations ${query ? `for "${query}"` : 'in your area'}`, 'info');
+      });
+
+      // Chat form
+      document.getElementById('chat-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const input = document.getElementById('chat-input');
+        const message = input.value.trim();
+        
+        if (message) {
+          sendChatMessage(message);
+          input.value = '';
+        }
+      });
+
+      // Keyboard shortcuts
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          document.querySelectorAll('.modal-backdrop').forEach(modal => {
+            if (!modal.classList.contains('hidden')) {
+              const modalId = modal.id;
+              closeModal(modalId);
+            }
+          });
+        }
+      });
+
+      // Window resize handler
+      window.addEventListener('resize', function() {
+        if (window.innerWidth >= 1024) {
+          hideMobileMenu();
+        }
+      });
+    }
+
+    // Make functions globally available
+    window.showPage = showPage;
+    window.showModal = showModal;
+    window.closeModal = closeModal;
+    window.toggleMobileMenu = toggleMobileMenu;
+    window.hideMobileMenu = hideMobileMenu;
+    window.trackPackage = trackPackage;
+    window.generatePDF = generatePDF;
+    window.requestEmailUpdates = requestEmailUpdates;
+    window.openClearanceModal = openClearanceModal;
+    window.closeClearanceModal = closeClearanceModal;
+    window.openLiveChat = openLiveChat;
+    window.showTab = showTab;
+    window.toggleFaq = toggleFaq;
+  </script>
+</body>
+</html>
